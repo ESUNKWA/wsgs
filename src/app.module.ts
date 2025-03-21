@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { ProduitModule } from './config/produit/produit.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Produit } from './config/produit/entities/produit.entity';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       username: 'postgres',
       password: 'postgres',
       database: 'gstock_db',
-      entities: [],
+      entities: [Produit],
       synchronize: true,
     }),
     ConfigModule.forRoot({
