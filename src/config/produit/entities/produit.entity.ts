@@ -40,6 +40,7 @@ export class Produit {
     @Column({
         name: 'r_description',
         type: 'text',
+        nullable: true
     })
     description: string;
 
