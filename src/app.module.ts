@@ -5,6 +5,8 @@ import { ProduitModule } from './config/produit/produit.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Produit } from './config/produit/entities/produit.entity';
+import { CategorieModule } from './config/categorie/categorie.module';
+import { Categorie } from './config/categorie/entities/categorie.entity';
 
 @Module({
   imports: [
@@ -15,13 +17,14 @@ import { Produit } from './config/produit/entities/produit.entity';
       username: 'postgres',
       password: 'postgres',
       database: 'gstock_db',
-      entities: [Produit],
+      entities: [Produit, Categorie],
       synchronize: true,
     }),
     ConfigModule.forRoot({
       isGlobal: true
     }),
-    ProduitModule
+    ProduitModule,
+    CategorieModule
   ],
   controllers: [AppController],
   providers: [AppService],
