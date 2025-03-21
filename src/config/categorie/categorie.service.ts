@@ -29,12 +29,29 @@ export class CategorieService {
      return data;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} categorie`;
+  async findOne(id: number) {
+    try {
+      const categorie = await this.categorieRepository.findOne({where: {
+        id: id
+      }});
+      return categorie;
+    } catch (error) {
+      return error.message;
+    }
+    
   }
 
-  update(id: number, updateCategorieDto: UpdateCategorieDto) {
-    return `This action updates a #${id} categorie`;
+  async update(id: number, updateCategorieDto: UpdateCategorieDto): Promise<Partial<Categorie>> {
+    try {
+      const categorie = await this.categorieRepository.preload({id, ...updateCategorieDto});
+      if (!categorie) {
+        throw 'Catégorie inexistante';
+      }
+
+      return await this.categorieRepository.save(categorie);
+    } catch (error) {
+      return error.message;
+    }
   }
 
   remove(id: number) {

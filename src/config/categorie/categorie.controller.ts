@@ -19,7 +19,7 @@ export class CategorieController {
   }
 
   @Get()
-  async findAll(@Res() response: Response,) {
+  async findAll(@Res() response: Response) {
     const data = await this.categorieService.findAll();
     return response.json({
       status: 'success',
@@ -29,13 +29,23 @@ export class CategorieController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    const data = this.categorieService.findOne(+id);
+  async findOne(@Res() response: Response, @Param('id') id: string) {
+    const data = await this.categorieService.findOne(+id);
+    return response.json({
+      status: 'success',
+      message: 'catégorie',
+      data: data
+    });
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCategorieDto: UpdateCategorieDto) {
-    return this.categorieService.update(+id, updateCategorieDto);
+   @Patch(':id')
+   async update(@Res() response: Response, @Param('id') id: string, @Body() updateCategorieDto: UpdateCategorieDto) {
+    const data = await this.categorieService.update(+id, updateCategorieDto);
+    return response.json({
+      status: 'success',
+      message: 'Modification effectuée avec succès',
+      data: data
+    });
   }
 
   @Delete(':id')
