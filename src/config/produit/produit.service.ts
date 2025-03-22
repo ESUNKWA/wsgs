@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
 import { Repository } from 'typeorm';
@@ -15,22 +15,41 @@ export class ProduitService {
   async create(createProduitDto: CreateProduitDto): Promise<Produit> {
     try {
       const data = await this.produitRepository.save(createProduitDto);
-      return await data;
+      return data;
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
   }
 
-  findAll() {
-    return this.produitRepository.find();
+  async findAll(): Promise<Produit[]> {
+    const data = await this.produitRepository.find();
+      return data;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} produit`;
+  async findOne(id: number): Promise<Produit> {
+
+    const data = await this.produitRepository.findOne({where: {
+      id: id
+    }});
+    
+    if(!data){
+      throw new NotFoundException('Produit inexistant');
+    }
+    return data;
+    
   }
 
-  update(id: number, updateProduitDto: UpdateProduitDto) {
-    return `This action updates a #${id} produit`;
+  async update(id: number, updateProduitDto: UpdateProduitDto) {
+    try {
+      const produitUpd = await this.produitRepository.preload({id, ...updateProduitDto});
+      if(!produitUpd){
+        throw new NotFoundException('Produit inexistant');
+      }
+      return this.produitRepository.save(produitUpd);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+
   }
 
   remove(id: number) {

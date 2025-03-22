@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Produit } from './config/produit/entities/produit.entity';
 import { CategorieModule } from './config/categorie/categorie.module';
 import { Categorie } from './config/categorie/entities/categorie.entity';
+import { ResponseService } from './services/response/response.service';
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { Categorie } from './config/categorie/entities/categorie.entity';
     CategorieModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ResponseService],
 })
 export class AppModule {}
