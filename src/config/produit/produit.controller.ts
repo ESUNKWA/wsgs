@@ -14,13 +14,14 @@ export class ProduitController {
   @Post()
   @HttpCode(201)
   async create(@Body() createProduitDto: CreateProduitDto): Promise<DataRequest> {
+    
     const data = await this.produitService.create(createProduitDto);
     return this.responseService.success('Enregistrement effectué avec succès', data);
   }
 
   @Get()
   @HttpCode(200)
-  async findAll() {
+  async findAll(): Promise<DataRequest> {
     const data = await this.produitService.findAll();
     return this.responseService.success('Liste des produits', data);
   }

@@ -14,6 +14,7 @@ export class ProduitService {
 
   async create(createProduitDto: CreateProduitDto): Promise<Produit> {
     try {
+      
       const data = await this.produitRepository.save(createProduitDto);
       return data;
     } catch (error) {

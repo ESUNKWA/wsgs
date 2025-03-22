@@ -1,5 +1,6 @@
+import { Categorie } from "src/config/categorie/entities/categorie.entity";
 import { GenerateDate } from "src/module/generateDate";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('t_produits')
 export class Produit extends GenerateDate {
@@ -44,4 +45,7 @@ export class Produit extends GenerateDate {
         nullable: true
     })
     description: string;
+
+    @ManyToOne(type => Categorie, (categorie) => categorie.produits, {nullable: false,  eager: true})
+    categorie: Categorie;
 }

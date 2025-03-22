@@ -1,5 +1,6 @@
+import { Produit } from "src/config/produit/entities/produit.entity";
 import { GenerateDate } from "src/module/generateDate";
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_categorie')
 export class Categorie extends GenerateDate {
@@ -21,4 +22,10 @@ export class Categorie extends GenerateDate {
         nullable: true
     })
     description: string;
+
+    @OneToMany(
+        type=> Produit,
+        (produit) => produit.categorie
+    )
+    produits: Produit[];
 }

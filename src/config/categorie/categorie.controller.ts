@@ -1,51 +1,39 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res, HttpCode } from '@nestjs/common';
 import { CategorieService } from './categorie.service';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
 import { Response } from 'express';
+import { ResponseService } from 'src/services/response/response.service';
+import { DataRequest } from 'src/interface/DataRequest';
 
 @Controller('categorie')
 export class CategorieController {
-  constructor(private readonly categorieService: CategorieService) {}
+  constructor(private readonly categorieService: CategorieService, private responseService: ResponseService) {}
 
   @Post()
-  async create(@Res() response: Response,  @Body() createCategorieDto: CreateCategorieDto) {
-    const insertData = await this.categorieService.create(createCategorieDto);
-    return response.json({
-      status: 'success',
-      message: 'Enregistrement effectué avec succès',
-      data: insertData
-    });
+  @HttpCode(201)
+  async create(@Body() createCategorieDto: CreateCategorieDto): Promise<DataRequest> {
+    const data = await this.categorieService.create(createCategorieDto);
+    return this.responseService.success('Enregistrement effectué avec succès', data);
   }
 
   @Get()
-  async findAll(@Res() response: Response) {
+  @HttpCode(200)
+  async findAll(): Promise<DataRequest> {
     const data = await this.categorieService.findAll();
-    return response.json({
-      status: 'success',
-      message: 'Liste des catégories',
-      data: data
-    });
+    return this.responseService.success('Liste des catégories', data);
   }
 
   @Get(':id')
-  async findOne(@Res() response: Response, @Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<DataRequest> {
     const data = await this.categorieService.findOne(+id);
-    return response.json({
-      status: 'success',
-      message: 'catégorie',
-      data: data
-    });
+    return this.responseService.success('Catégorie trouvé', data);
   }
 
    @Patch(':id')
-   async update(@Res() response: Response, @Param('id') id: string, @Body() updateCategorieDto: UpdateCategorieDto) {
+   async update(@Param('id') id: string, @Body() updateCategorieDto: UpdateCategorieDto): Promise<DataRequest> {
     const data = await this.categorieService.update(+id, updateCategorieDto);
-    return response.json({
-      status: 'success',
-      message: 'Modification effectuée avec succès',
-      data: data
-    });
+    return this.responseService.success('Modification effectuée avec succès', data);
   }
 
   @Delete(':id')

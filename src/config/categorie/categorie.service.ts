@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
 import { Repository } from 'typeorm';
@@ -15,13 +15,8 @@ export class CategorieService {
   }
 
   async create(createCategorieDto: CreateCategorieDto): Promise<Categorie> {
-
-    try {
-        const data = await this.categorieRepository.save(createCategorieDto);
-        return data;
-    } catch (error) {
-      return error.message;
-    }
+    const data = await this.categorieRepository.save(createCategorieDto);
+    return data;
   }
 
   async findAll(): Promise<Categorie[]> {
@@ -29,29 +24,31 @@ export class CategorieService {
      return data;
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<Partial<Categorie>> {
     try {
       const categorie = await this.categorieRepository.findOne({where: {
         id: id
       }});
+
+      if (!categorie) {
+        throw new NotFoundException('Catégorie inexistante');
+      }
+
       return categorie;
     } catch (error) {
-      return error.message;
+      throw new InternalServerErrorException(error.message);
     }
     
   }
 
   async update(id: number, updateCategorieDto: UpdateCategorieDto): Promise<Partial<Categorie>> {
-    try {
-      const categorie = await this.categorieRepository.preload({id, ...updateCategorieDto});
-      if (!categorie) {
-        throw 'Catégorie inexistante';
-      }
-
-      return await this.categorieRepository.save(categorie);
-    } catch (error) {
-      return error.message;
+    
+    const categorie = await this.categorieRepository.preload({id, ...updateCategorieDto});
+    if (!categorie) {
+      throw 'Catégorie inexistante';
     }
+
+    return await this.categorieRepository.save(categorie);
   }
 
   remove(id: number) {

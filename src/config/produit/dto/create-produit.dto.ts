@@ -1,4 +1,5 @@
 import { IsNotEmpty, Length } from "class-validator";
+import { Categorie } from "src/config/categorie/entities/categorie.entity";
 
 export class CreateProduitDto {
 
@@ -12,4 +13,7 @@ export class CreateProduitDto {
         message: 'Veuillez saisir le prix d\'achat du produit'
     })
     prix_achat: number;
+
+    @IsNotEmpty()
+    categorie: Categorie;
 }
