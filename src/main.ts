@@ -5,11 +5,13 @@ import * as dotenv from 'dotenv';//Module pour l'utilisation des fichier .env
 
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   app.useGlobalPipes(new ValidationPipe());
 
   const config = new DocumentBuilder()
@@ -21,8 +23,7 @@ async function bootstrap() {
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('swagger', app, documentFactory, {jsonDocumentUrl: 'swagger/json',});
 
-  await app.listen(process.env.PORT ?? 3000);
-  //const confiService = app.get(ConfigService);
-  //await app.listen(confiService.get('APP_PORT'));
+  await app.listen(process.env.APP_PORT?? 3000);
+  
 }
 bootstrap();

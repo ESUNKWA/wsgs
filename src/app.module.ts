@@ -11,18 +11,18 @@ import { ResponseService } from './services/response/response.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'postgres',
-      database: 'gstock_db',
-      entities: [Produit, Categorie],
-      synchronize: true,
-    }),
     ConfigModule.forRoot({
       isGlobal: true
+    }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_DB,
+      entities: [Produit, Categorie],
+      synchronize: true,
     }),
     ProduitModule,
     CategorieModule
