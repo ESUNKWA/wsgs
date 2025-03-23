@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import { Produit } from "src/config/produit/entities/produit.entity";
 import { GenerateDate } from "src/module/generateDate";
 import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";

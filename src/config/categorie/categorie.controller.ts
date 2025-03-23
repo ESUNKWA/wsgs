@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Res, HttpCode } from
 import { CategorieService } from './categorie.service';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
-import { Response } from 'express';
 import { ResponseService } from 'src/services/response/response.service';
 import { DataRequest } from 'src/interface/DataRequest';
 
@@ -12,8 +11,9 @@ export class CategorieController {
 
   @Post()
   @HttpCode(201)
-  async create(@Body() createCategorieDto: CreateCategorieDto): Promise<DataRequest> {
-    const data = await this.categorieService.create(createCategorieDto);
+  
+  async create(@Body() createCategorie: CreateCategorieDto): Promise<DataRequest> {
+    const data = await this.categorieService.create(createCategorie);
     return this.responseService.success('Enregistrement effectué avec succès', data);
   }
 
