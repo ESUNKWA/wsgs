@@ -17,7 +17,7 @@ import { ResponseService } from './services/response/response.service';
       port: 5432,
       username: 'mdeki',
       password: 'Dyaj2021@',
-      database: 'stockflow_db',
+      database: 'stokflow_db',
       entities: [Produit, Categorie],
       synchronize: true,
     }),
