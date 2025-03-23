@@ -1,17 +1,19 @@
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
 import { GenerateDate } from "src/module/generateDate";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('t_produits')
 export class Produit extends GenerateDate {
     @PrimaryGeneratedColumn()
     id: number;
 
+    @Index()
     @Column({
         name: 'r_nom',
         nullable: false,
         length: 35,
-        type: 'character varying'
+        type: 'character varying',
+        unique: true
     })
     nom: string;
 
@@ -46,6 +48,6 @@ export class Produit extends GenerateDate {
     })
     description: string;
 
-    @ManyToOne(type => Categorie, (categorie) => categorie.produits, {nullable: false,  eager: true})
+    @ManyToOne(type => Categorie, (categorie) => categorie.produits, {nullable: true,  eager: true})
     categorie: Categorie;
 }

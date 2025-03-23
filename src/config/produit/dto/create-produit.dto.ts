@@ -6,7 +6,6 @@ export class CreateProduitDto {
     @IsNotEmpty({
         message: 'Veuillez saisir le nom du produit'
     })
-    
     nom: string;
 
     @IsNotEmpty({
