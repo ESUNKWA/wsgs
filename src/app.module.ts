@@ -10,6 +10,9 @@ import { Categorie } from './config/categorie/entities/categorie.entity';
 import { ResponseService } from './services/response/response.service';
 import { FournisseurModule } from './config/fournisseur/fournisseur.module';
 import { Fournisseur } from './config/fournisseur/entities/fournisseur.entity';
+import { Achat } from './gestion-achats/achat/entities/achat.entity';
+import { AchatModule } from './gestion-achats/achat/achat.module';
+import { DetailAchat } from './gestion-achats/detail-achat/entities/detail-achat.entity';
 
 @Module({
   imports: [
@@ -23,12 +26,13 @@ import { Fournisseur } from './config/fournisseur/entities/fournisseur.entity';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Produit, Categorie, Fournisseur],
+      entities: [Produit, Categorie, Fournisseur, Achat, DetailAchat],
       synchronize: true,
     }),
     ProduitModule,
     CategorieModule,
-    FournisseurModule
+    FournisseurModule,
+    AchatModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],
