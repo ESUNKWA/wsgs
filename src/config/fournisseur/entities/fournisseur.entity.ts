@@ -1,5 +1,6 @@
+import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { GenerateDate } from "src/module/generateDate";
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_fournisseurs')
 export class Fournisseur extends GenerateDate {
@@ -60,4 +61,11 @@ export class Fournisseur extends GenerateDate {
         unique: true
     })
     contact_interlocuteur: string
+
+    @OneToMany(
+        type => Achat,
+        (achat) => achat.fournisseur,
+        {onDelete: 'CASCADE'}
+    )
+    achat: Achat[];
 }

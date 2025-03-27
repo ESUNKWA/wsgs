@@ -1,6 +1,7 @@
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
+import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
 import { GenerateDate } from "src/module/generateDate";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('t_produits')
 export class Produit extends GenerateDate {
@@ -50,4 +51,11 @@ export class Produit extends GenerateDate {
 
     @ManyToOne(type => Categorie, (categorie) => categorie.produits, {nullable: true,  eager: true})
     categorie: Categorie;
+
+    @OneToMany(
+        type => DetailAchat,
+        (detail_achat) => detail_achat.produit,
+        {onDelete: 'CASCADE'}
+    )
+    detail_achat: DetailAchat;
 }
