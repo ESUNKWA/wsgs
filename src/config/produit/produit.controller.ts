@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ProduitService } from './produit.service';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
 import { Produit } from './entities/produit.entity';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
-import { Categorie } from '../categorie/entities/categorie.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/common/helpers/multer.config';
 
 @Controller('produit')
 export class ProduitController {
@@ -13,9 +14,10 @@ export class ProduitController {
 
   @Post()
   @HttpCode(201)
-  async create(@Body() createProduitDto: CreateProduitDto): Promise<DataRequest> {
+  @UseInterceptors(FileInterceptor('image', multerOptions)) 
+  async create(@Body() createProduitDto: CreateProduitDto, @UploadedFile() image: Express.Multer.File): Promise<DataRequest> {
     
-    const data = await this.produitService.create(createProduitDto);
+    const data = await this.produitService.create(createProduitDto, image);
     return this.responseService.success('Enregistrement effectué avec succès', data);
   }
 
@@ -33,8 +35,9 @@ export class ProduitController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateProduitDto: UpdateProduitDto) {
-    const data = await this.produitService.update(+id, updateProduitDto);
+  @UseInterceptors(FileInterceptor('image', multerOptions))
+  async update(@Param('id') id: string, @Body() updateProduitDto: UpdateProduitDto, @UploadedFile() image: Express.Multer.File) {
+    const data = await this.produitService.update(+id, updateProduitDto, image);
     return this.responseService.success('Modification effectuée avec succès', data);
   }
 

@@ -4,19 +4,20 @@ import { AppService } from './app.service';
 import { ProduitModule } from './config/produit/produit.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Produit } from './config/produit/entities/produit.entity';
 import { CategorieModule } from './config/categorie/categorie.module';
-import { Categorie } from './config/categorie/entities/categorie.entity';
 import { ResponseService } from './services/response/response.service';
 import { FournisseurModule } from './config/fournisseur/fournisseur.module';
-import { Fournisseur } from './config/fournisseur/entities/fournisseur.entity';
-import { Achat } from './gestion-achats/achat/entities/achat.entity';
 import { AchatModule } from './gestion-achats/achat/achat.module';
-import { DetailAchat } from './gestion-achats/detail-achat/entities/detail-achat.entity';
 import { HistoriqueStockModule } from './gestion-achats/historique-stock/historique-stock.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import * as path from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: path.join(__dirname, '..', 'uploads'), // Remplace par le chemin correct
+      serveRoot: '/uploads', // Cette URL sera utilisée pour accéder aux fichiers
+    }),
     ConfigModule.forRoot({
       isGlobal: true
     }),

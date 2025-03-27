@@ -36,12 +36,44 @@ export class Produit extends defaultDateGeneratorHelper {
     prix_vente: number;
 
     @Column({
-        name: 'r_quantite_stock',
+        name: 'r_stock_initial',
         nullable: true,
         type: 'real',
         default: 0
     })
-    quantite_stock: number;
+    stock_initial: number;
+
+    @Column({
+        name: 'r_stock_physique',
+        nullable: true,
+        type: 'real',
+        default: 0
+    })
+    stock_physique: number;
+
+    @Column({
+        name: 'r_stock_reserve',
+        nullable: true,
+        type: 'real',
+        default: 0
+    })
+    stock_reserve: number;
+
+    @Column({
+        name: 'r_stock_minimum',
+        nullable: true,
+        type: 'real',
+        default: 0
+    })
+    stock_minimum: number;
+
+    @Column({
+        name: 'r_stock_disponible',
+        nullable: true,
+        type: 'real',
+        default: 0
+    })
+    stock_disponible: number;
     
     @Column({
         name: 'r_description',
@@ -66,4 +98,7 @@ export class Produit extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     historique_stock: HistoriqueStock;
+
+    @Column({name: 'r_image', type:'character varying', length: 255, nullable: true})
+    image: string| null;
 }

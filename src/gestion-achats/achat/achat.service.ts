@@ -72,7 +72,7 @@ export class AchatService {
           for (const produit of produits) {
               const ligne = createAchatDto.detail_achat.find((l: any) => l.produit === produit.id);
               if (ligne) {
-                  produit.quantite_stock += ligne.quantite; // ou - ligne.quantite selon le mouvement
+                  produit.stock_disponible += ligne.quantite; // ou - ligne.quantite selon le mouvement
               }
           }
           await manager.save(Produit, produits);
