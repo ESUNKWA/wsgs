@@ -2,6 +2,7 @@ import { Fournisseur } from "src/config/fournisseur/entities/fournisseur.entity"
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 
 export type ModePaiement = "espece" | "carte"| "mobile_money";
 
@@ -22,6 +23,7 @@ export class Achat extends defaultDateGeneratorHelper {
     date_achat: Date;
 
     @Column({
+        name: 'r_mode_paiement',
         type: "enum",
         enum: ["espece", "carte", "mobile_money"],
         default: "espece"}
@@ -50,4 +52,11 @@ export class Achat extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     detail_achat: DetailAchat[];
+
+    @OneToMany(
+        type => HistoriqueStock,
+        (historique_stock) => historique_stock.achat,
+        {onDelete: 'CASCADE'}
+    )
+    historique_stock: HistoriqueStock[];
 }

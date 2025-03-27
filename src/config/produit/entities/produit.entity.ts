@@ -2,6 +2,7 @@ import { Categorie } from "src/config/categorie/entities/categorie.entity";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 
 @Entity('t_produits')
 export class Produit extends defaultDateGeneratorHelper {
@@ -58,4 +59,11 @@ export class Produit extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     detail_achat: DetailAchat;
+
+    @OneToMany(
+        type => HistoriqueStock,
+        (historique_stock) => historique_stock.produit,
+        {onDelete: 'CASCADE'}
+    )
+    historique_stock: HistoriqueStock;
 }

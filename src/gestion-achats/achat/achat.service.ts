@@ -1,11 +1,13 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateAchatDto } from './dto/create-achat.dto';
 import { UpdateAchatDto } from './dto/update-achat.dto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Achat } from './entities/achat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DetailAchat } from '../detail-achat/entities/detail-achat.entity';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
+import { HistoriqueStock } from '../historique-stock/entities/historique-stock.entity';
+import { Produit } from 'src/config/produit/entities/produit.entity';
 
 @Injectable()
 export class AchatService {
@@ -16,6 +18,8 @@ export class AchatService {
     private readonly dataSource: DataSource,
     @InjectRepository(Achat) private achatRepository: Repository<Achat>,
     @InjectRepository(DetailAchat) private detailAchatRepository: Repository<DetailAchat>,
+    @InjectRepository(HistoriqueStock) private historiqueStockRepository: Repository<HistoriqueStock>
+    
   ){}
 
   async create(createAchatDto: CreateAchatDto): Promise<Achat> {
@@ -42,6 +46,38 @@ export class AchatService {
           // Insérer toutes les lignes en une seule requête
           await manager.save(lignes);
 
+
+          // Ajouter les lignes d'historisation des stocks
+          const lignesHistorik = createAchatDto.detail_achat.map((ligne: any) => {
+            return manager.create(HistoriqueStock, {
+              produit: ligne.produit,
+              quantite: ligne.quantite,
+              mouvement: 'entree',
+              source: 'achat',
+              achat: achat, // Associe chaque ligne à l'achat
+            });
+          });
+          
+          // Insérer toutes les lignes en une seule requête
+          await manager.save(lignesHistorik);
+
+          
+          // 1. Extraire les ids
+          const produitsIds = createAchatDto.detail_achat.map((ligne: any) => ligne.produit);
+
+          // 2. Charger les produits
+          const produits = await manager.findBy(Produit, { id: In(produitsIds) });
+
+          // 3. Ajuster le stock
+          for (const produit of produits) {
+              const ligne = createAchatDto.detail_achat.find((l: any) => l.produit === produit.id);
+              if (ligne) {
+                  produit.quantite_stock += ligne.quantite; // ou - ligne.quantite selon le mouvement
+              }
+          }
+          await manager.save(Produit, produits);
+
+
           return achat;
 
         });
@@ -66,7 +102,7 @@ export class AchatService {
     return achat;
   }
 
-  async update(id: number, updateAchatDto: any): Promise<any> {
+  async update(id: number, updateAchatDto: any): Promise<Achat> {
     try {
         return await this.dataSource.transaction(async (manager) => {
 
@@ -82,9 +118,7 @@ export class AchatService {
           
          
           // 3. Supprimer les anciennes lignes (si c'est ce que tu veux)
-          await manager.delete(DetailAchat, { achat: achat.id });
-
-          
+          await manager.delete(DetailAchat, { achat: achat.id });        
       
           // 4. Insérer les nouvelles lignes
           const lignes: DetailAchat[] = updateAchatDto.detail_achat.map((ligne: any) => {
@@ -101,7 +135,7 @@ export class AchatService {
           
           await manager.save(DetailAchat, lignes);
       
-          
+          return achat;
         });
     } catch (error) {
       throw new InternalServerErrorException(error.message);
