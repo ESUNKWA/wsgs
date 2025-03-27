@@ -20,7 +20,7 @@ export class CategorieService {
   }
 
   async findAll(): Promise<Categorie[]> {
-     const data = await this.categorieRepository.find() ;
+     const data = await this.categorieRepository.find({order: {'nom': 'ASC'}}) ;
      return data;
   }
 
@@ -45,13 +45,13 @@ export class CategorieService {
     
     const categorie = await this.categorieRepository.preload({id, ...updateCategorieDto});
     if (!categorie) {
-      throw 'Catégorie inexistante';
+      throw new NotFoundException('Catégorie inexistante');
     }
 
     return await this.categorieRepository.save(categorie);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} categorie`;
+  async remove(id: number) {
+    return await this.categorieRepository.softDelete(id);
   }
 }
