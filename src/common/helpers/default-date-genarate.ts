@@ -1,6 +1,6 @@
 import { CreateDateColumn, DeleteDateColumn, UpdateDateColumn } from "typeorm";
 
-export class GenerateDate{
+export class defaultDateGeneratorHelper{
      @CreateDateColumn()
     created_at: Date;
 

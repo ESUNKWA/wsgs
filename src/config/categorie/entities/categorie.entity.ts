@@ -1,10 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Produit } from "src/config/produit/entities/produit.entity";
-import { GenerateDate } from "src/module/generateDate";
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_categorie')
-export class Categorie extends GenerateDate {
+export class Categorie extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
     id: number;
 

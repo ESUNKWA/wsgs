@@ -1,10 +1,10 @@
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
-import { GenerateDate } from "src/module/generateDate";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
+import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_produits')
-export class Produit extends GenerateDate {
+export class Produit extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
     id: number;
 

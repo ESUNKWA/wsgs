@@ -1,18 +1,18 @@
 import { Fournisseur } from "src/config/fournisseur/entities/fournisseur.entity";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
-import { GenerateDate } from "src/module/generateDate";
-import { Column, Entity, Index, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
+import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
-export type ModePaiement = "espece" | "espece" | "carte"| "mobile_money";
+export type ModePaiement = "espece" | "carte"| "mobile_money";
 
 @Entity('t_achats')
-export class Achat extends GenerateDate {
+export class Achat extends defaultDateGeneratorHelper {
 
     @PrimaryGeneratedColumn()
     id: number;
 
     @Index()
-    @Column({name: 'r_reference', type: 'character varying', length: 10})
+    @Column({name: 'r_reference', type: 'character varying', length: 20, unique: true})
     reference: string;
 
     @Column({name: 'r_montant_total', nullable: false, type: 'real'})
@@ -31,6 +31,11 @@ export class Achat extends GenerateDate {
     @Column({name: 'r_statut', nullable: true, type: 'character varying', length: 10})
     statut: string;
 
+    @Column({name: 'r_libelle', nullable: true, type: 'character varying', length: 35})
+    libelle: string;
+
+    @Column({name: 'r_description', nullable: true, type: 'text'})
+    description: string;
 
     @ManyToOne(
         type => Fournisseur,
@@ -41,7 +46,7 @@ export class Achat extends GenerateDate {
 
     @OneToMany(
         type => DetailAchat,
-        (detail_achat) => detail_achat.produit,
+        (detail_achat) => detail_achat.achat,
         {onDelete: 'CASCADE'}
     )
     detail_achat: DetailAchat[];

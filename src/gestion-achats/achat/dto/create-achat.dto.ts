@@ -2,6 +2,8 @@ import { IsNotEmpty } from "class-validator";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
 
 export class CreateAchatDto {
+
+    
     reference: string;
 
     @IsNotEmpty({message: 'Le montant total de l\'achat est réquis'})
