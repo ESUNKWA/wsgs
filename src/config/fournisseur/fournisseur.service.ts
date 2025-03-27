@@ -22,7 +22,7 @@ export class FournisseurService {
   }
 
   async findAll(): Promise<Fournisseur[]> {
-    return await this.fournisseurRepository.find();
+    return await this.fournisseurRepository.find({order: {nom: 'ASC'}});
   }
 
   async findOne(id: number): Promise<Fournisseur> {
@@ -48,7 +48,7 @@ export class FournisseurService {
    
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} fournisseur`;
+  async remove(id: number) {
+    return await this.fournisseurRepository.softDelete(id);
   }
 }

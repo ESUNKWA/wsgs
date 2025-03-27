@@ -30,7 +30,7 @@ export class ProduitService {
 
   async findAll(): Promise<Produit[]> {
     // Récupérer tous les produits depuis la base de données
-    const produits = await this.produitRepository.find();
+    const produits = await this.produitRepository.find({order: {'nom': 'ASC'}});
 
     // Ajouter l'URL complète de l'image pour chaque produit
     const produitsWithImagePath = produits.map((produit) => {
@@ -90,7 +90,7 @@ export class ProduitService {
 
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} produit`;
+  async remove(id: number) {
+    return await this.produitRepository.softDelete(id);
   }
 }

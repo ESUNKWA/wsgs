@@ -10,6 +10,8 @@ import { FournisseurModule } from './config/fournisseur/fournisseur.module';
 import { AchatModule } from './gestion-achats/achat/achat.module';
 import { HistoriqueStockModule } from './gestion-achats/historique-stock/historique-stock.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { UtilisateursModule } from './gestion-utilisateurs/utilisateurs/utilisateurs.module';
+import { ProfilsModule } from './gestion-utilisateurs/profils/profils.module';
 import * as path from 'path';
 
 @Module({
@@ -35,7 +37,9 @@ import * as path from 'path';
     CategorieModule,
     FournisseurModule,
     AchatModule,
-    HistoriqueStockModule
+    HistoriqueStockModule,
+    UtilisateursModule,
+    ProfilsModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],

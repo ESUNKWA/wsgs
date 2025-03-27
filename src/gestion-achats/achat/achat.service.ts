@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateAchatDto } from './dto/create-achat.dto';
-import { UpdateAchatDto } from './dto/update-achat.dto';
 import { DataSource, In, Repository } from 'typeorm';
 import { Achat } from './entities/achat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,8 +10,6 @@ import { Produit } from 'src/config/produit/entities/produit.entity';
 
 @Injectable()
 export class AchatService {
-
-  data: any;
 
   constructor( 
     private readonly dataSource: DataSource,
@@ -91,7 +88,7 @@ export class AchatService {
   }
 
   async findAll(): Promise<Achat[]>  {
-    return await this.achatRepository.find();
+    return await this.achatRepository.find({order: {'created_at': 'DESC'}});
   }
 
   async findOne(id: number): Promise<Achat> {
@@ -134,6 +131,39 @@ export class AchatService {
           await manager.save(Achat, achat);
           
           await manager.save(DetailAchat, lignes);
+
+           // 3. Supprimer les anciennes lignes d'historisation (si c'est ce que tu veux)
+           await manager.delete(HistoriqueStock, { achat: achat.id }); 
+
+          // Ajouter les lignes d'historisation des stocks
+          const lignesHistorik = updateAchatDto.detail_achat.map((ligne: any) => {
+            return manager.create(HistoriqueStock, {
+              produit: ligne.produit,
+              quantite: ligne.quantite,
+              mouvement: 'entree',
+              source: 'achat',
+              achat: achat, // Associe chaque ligne à l'achat
+            });
+          });
+          
+          // Insérer toutes les lignes en une seule requête
+          await manager.save(lignesHistorik);
+
+          
+          // 1. Extraire les ids
+          const produitsIds = updateAchatDto.detail_achat.map((ligne: any) => ligne.produit);
+
+          // 2. Charger les produits
+          const produits = await manager.findBy(Produit, { id: In(produitsIds) });
+
+          // 3. Ajuster le stock
+          for (const produit of produits) {
+              const ligne = updateAchatDto.detail_achat.find((l: any) => l.produit === produit.id);
+              if (ligne) {
+                  produit.stock_disponible += ligne.quantite; // ou - ligne.quantite selon le mouvement
+              }
+          }
+          await manager.save(Produit, produits);
       
           return achat;
         });
