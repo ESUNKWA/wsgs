@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';//Module pour l'utilisation des fichier .env
 
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 dotenv.config();
 
