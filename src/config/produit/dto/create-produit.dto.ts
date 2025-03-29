@@ -1,4 +1,4 @@
-import { IsNotEmpty, Length } from "class-validator";
+import { IsNotEmpty } from "class-validator";
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
 
 export class CreateProduitDto {

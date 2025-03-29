@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { Produit } from './entities/produit.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class ProduitService {
@@ -14,7 +13,7 @@ export class ProduitService {
     @InjectRepository(Produit)
     private produitRepository: Repository<Produit> ){}
 
-  async create(createProduitDto: CreateProduitDto, file?: Express.Multer.File): Promise<any> {
+  async create(createProduitDto: CreateProduitDto, file?: Express.Multer.File): Promise<Produit> {
     try {
       const produit = this.produitRepository.create({
         ...createProduitDto,
@@ -22,7 +21,6 @@ export class ProduitService {
       });
       return await this.produitRepository.save(produit);
 
-      return produit;
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
@@ -34,7 +32,7 @@ export class ProduitService {
 
     // Ajouter l'URL complète de l'image pour chaque produit
     const produitsWithImagePath = produits.map((produit) => {
-      const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
+    const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
       return {
         ...produit,
         imageUrl: imagePath,  // Ajouter le champ imageUrl avec l'URL complète
@@ -83,11 +81,10 @@ export class ProduitService {
         produitUpd.image = imagePath;
       }
 
-      return this.produitRepository.save(produitUpd);
+      return await this.produitRepository.save(produitUpd);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
-
   }
 
   async remove(id: number) {

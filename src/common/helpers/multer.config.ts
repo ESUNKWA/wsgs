@@ -1,14 +1,14 @@
-// multer.config.ts
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
-// Configuration des options pour multer
-export const multerOptions = {
+export const multerOptions = (destination: string) => ({
   storage: diskStorage({
-    destination: './uploads/produits',  // Dossier où les images seront stockées
+    destination: (req, file, cb) => {
+      cb(null, './uploads'+destination); // Utilisation du paramètre pour définir le dossier
+    },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname));  // Nom unique pour chaque fichier
+      cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname)); // Nom unique
     },
   }),
   fileFilter: (req, file, cb) => {
@@ -18,4 +18,4 @@ export const multerOptions = {
     }
     cb(null, true);
   },
-};
+});

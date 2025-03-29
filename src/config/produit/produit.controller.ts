@@ -14,7 +14,7 @@ export class ProduitController {
 
   @Post()
   @HttpCode(201)
-  @UseInterceptors(FileInterceptor('image', multerOptions)) 
+  @UseInterceptors(FileInterceptor('image', multerOptions('/produits'))) 
   async create(@Body() createProduitDto: CreateProduitDto, @UploadedFile() image: Express.Multer.File): Promise<DataRequest> {
     
     const data = await this.produitService.create(createProduitDto, image);
@@ -35,7 +35,7 @@ export class ProduitController {
   }
 
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('image', multerOptions))
+  @UseInterceptors(FileInterceptor('image', multerOptions('/produits')))
   async update(@Param('id') id: string, @Body() updateProduitDto: UpdateProduitDto, @UploadedFile() image: Express.Multer.File) {
     const data = await this.produitService.update(+id, updateProduitDto, image);
     return this.responseService.success('Modification effectuée avec succès', data);
