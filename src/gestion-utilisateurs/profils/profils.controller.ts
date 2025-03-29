@@ -5,7 +5,7 @@ import { UpdateProfilDto } from './dto/update-profil.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
 
-@Controller('profils')
+@Controller('profil')
 export class ProfilsController {
   constructor(private readonly profilsService: ProfilsService, private responseService: ResponseService) {}
 

@@ -1,5 +1,6 @@
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
+import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_profils')
 export class Profil extends defaultDateGeneratorHelper {
@@ -12,4 +13,7 @@ export class Profil extends defaultDateGeneratorHelper {
 
     @Column({name: 'r_description', type: 'text'})
     description: string;
+
+    @OneToMany(type=> Utilisateur, (utilisateur) => utilisateur.profil)
+    utilisateur: Utilisateur[];
 }
