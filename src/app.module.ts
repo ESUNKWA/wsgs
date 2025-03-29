@@ -13,6 +13,8 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { UtilisateursModule } from './gestion-utilisateurs/utilisateurs/utilisateurs.module';
 import { ProfilsModule } from './gestion-utilisateurs/profils/profils.module';
 import { AuthenticationModule } from './gestion-utilisateurs/authentication/authentication.module';
+import { StructureModule } from './gestion-boutiques/structure/structure.module';
+import { BoutiqueModule } from './gestion-boutiques/boutique/boutique.module';
 import * as path from 'path';
 
 @Module({
@@ -42,7 +44,9 @@ import * as path from 'path';
     HistoriqueStockModule,
     UtilisateursModule,
     ProfilsModule,
-    AuthenticationModule
+    AuthenticationModule,
+    StructureModule,
+    BoutiqueModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],

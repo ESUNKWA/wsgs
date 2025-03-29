@@ -10,9 +10,7 @@ export class CategorieService {
 
   constructor( 
     @InjectRepository(Categorie)
-    private categorieRepository: Repository<Categorie> ){
-
-  }
+    private categorieRepository: Repository<Categorie> ){}
 
   async create(createCategorieDto: CreateCategorieDto): Promise<Categorie> {
     const data = await this.categorieRepository.save(createCategorieDto);
