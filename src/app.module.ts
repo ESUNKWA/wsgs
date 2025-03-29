@@ -12,6 +12,7 @@ import { HistoriqueStockModule } from './gestion-achats/historique-stock/histori
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { UtilisateursModule } from './gestion-utilisateurs/utilisateurs/utilisateurs.module';
 import { ProfilsModule } from './gestion-utilisateurs/profils/profils.module';
+import { AuthenticationModule } from './gestion-utilisateurs/authentication/authentication.module';
 import * as path from 'path';
 
 @Module({
@@ -33,13 +34,15 @@ import * as path from 'path';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+    ConfigModule.forRoot(), 
     ProduitModule,
     CategorieModule,
     FournisseurModule,
     AchatModule,
     HistoriqueStockModule,
     UtilisateursModule,
-    ProfilsModule
+    ProfilsModule,
+    AuthenticationModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],

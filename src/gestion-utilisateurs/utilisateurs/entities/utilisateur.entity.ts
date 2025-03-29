@@ -20,6 +20,6 @@ export class Utilisateur {
     @Column()
     mot_de_passe: string;
 
-    @ManyToOne(type => Profil, (profil) => profil.utilisateur)
+    @ManyToOne(type => Profil, (profil) => profil.utilisateur, {eager: true})
     profil: Profil;
 }

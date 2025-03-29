@@ -24,13 +24,13 @@ export class UtilisateursService {
   }
 
   async findAll(): Promise<Utilisateur[]> {
-    return await this.utilisateurRepository.find({order: {nom: 'ASC'}}) ;
+    return await this.utilisateurRepository.find({order: {nom: 'ASC'}, select: ['nom', 'prenoms', 'email', 'profil']}) ;
   }
 
   async findOne(id: number): Promise<Utilisateur> {
     const data = await this.utilisateurRepository.findOne({where: {id: id}});
         if(!data){
-          throw new NotFoundException('Profil inexistant');
+          throw new NotFoundException('Utilisateur inexistant');
         }
     
         return data;
@@ -50,5 +50,14 @@ export class UtilisateursService {
 
   async remove(id: number) {
     return await this.utilisateurRepository.softDelete(id);
+  }
+
+  async signin(email: string): Promise<Utilisateur> {
+    const data = await this.utilisateurRepository.findOne({where: {email}});
+        if(!data){
+          throw new NotFoundException('Email ou mot de passe incorrecte');
+        }
+    
+        return data;
   }
 }
