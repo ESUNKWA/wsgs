@@ -1,7 +1,9 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_structures')
-export class Structure {
+export class Structure extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -23,4 +25,7 @@ export class Structure {
 
     @Column({name: 'r_logo_path', nullable: true, unique: true, type:'character varying', length:255})
     logo: string| null;
+
+    @OneToMany(type => Boutique, (boutique) => boutique.structure)
+    boutique: Boutique[];
 }

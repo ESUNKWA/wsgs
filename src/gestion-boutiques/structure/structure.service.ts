@@ -28,7 +28,7 @@ export class StructureService {
     
   }
 
-  async findAll(): Promise<any> {
+  async findAll(): Promise<Structure[]> {
     // Récupérer tous les produits depuis la base de données
     const structure = await this.structureRepository.find({order: {'nom': 'ASC'}});
 
