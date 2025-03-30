@@ -1,3 +1,5 @@
+import { Produit } from "src/config/produit/entities/produit.entity";
+import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
@@ -31,4 +33,10 @@ export class Boutique {
 
     @OneToMany(type=> Utilisateur, (utilisateur) => utilisateur.boutique)
     utilisateur: Utilisateur
+
+    @OneToMany(produit=> Produit, (produit) => produit.boutique)
+    produit: Produit[]
+
+    @OneToMany(achat=> Achat, (achat) => achat.boutique)
+    achat: Achat[]
 }

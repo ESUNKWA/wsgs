@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateAchatDto } from './dto/create-achat.dto';
 import { DataSource, In, Repository } from 'typeorm';
 import { Achat } from './entities/achat.entity';
@@ -87,8 +87,11 @@ export class AchatService {
     
   }
 
-  async findAll(): Promise<Achat[]>  {
-    return await this.achatRepository.find({order: {'created_at': 'DESC'}});
+  async findAll(body: {boutique: number}): Promise<Achat[]>  {
+    if (isNaN(body.boutique)) {
+      throw new BadRequestException('Veuillez préciser la boutique.');
+    }
+    return await this.achatRepository.find({where: {boutique: {id: body.boutique}}, order: {'created_at': 'DESC'}});
   }
 
   async findOne(id: number): Promise<Achat> {
@@ -111,9 +114,6 @@ export class AchatService {
           if (!achat) {
             throw new Error('Achat introuvable');
           }
-
-          
-         
           // 3. Supprimer les anciennes lignes (si c'est ce que tu veux)
           await manager.delete(DetailAchat, { achat: achat.id });        
       

@@ -3,6 +3,7 @@ import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-ach
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 @Entity('t_produits')
 export class Produit extends defaultDateGeneratorHelper {
@@ -101,4 +102,7 @@ export class Produit extends defaultDateGeneratorHelper {
 
     @Column({name: 'r_image', type:'character varying', length: 255, nullable: true})
     image: string| null;
+
+    @ManyToOne(type => Boutique, (boutique) => boutique.produit, {eager: false})
+    boutique: Boutique[];
 }

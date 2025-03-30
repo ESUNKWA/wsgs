@@ -24,7 +24,11 @@ export class UtilisateursService {
   }
 
   async findAll(): Promise<Utilisateur[]> {
-    return await this.utilisateurRepository.find({order: {nom: 'ASC'}, select: ['nom', 'prenoms', 'email', 'profil']}) ;
+    return await this.utilisateurRepository.find({
+      order: {nom: 'ASC'}, 
+      select: ['nom', 'prenoms', 'email', 'profil'],
+      relations: ['boutique']
+    }) ;
   }
 
   async findOne(id: number): Promise<Utilisateur> {
@@ -40,7 +44,7 @@ export class UtilisateursService {
     try {
       const profil = await this.utilisateurRepository.preload({id, ...updateUtilisateurDto});
       if(!profil){
-        throw new NotFoundException('Profil inexistant');
+        throw new NotFoundException('Utilisateur inexistant');
       }
       return await this.utilisateurRepository.save(profil)
     } catch (error) {

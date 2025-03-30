@@ -17,4 +17,9 @@ export class CreateProduitDto {
     categorie: Categorie;
 
     image: string
+
+    @IsNotEmpty({
+        message: 'Veuillez sélectionnez la boutique'
+    })
+    bootique: number;
 }
