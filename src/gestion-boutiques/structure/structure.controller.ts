@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UploadedFile, UseInterceptors, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UploadedFile, UseInterceptors, HttpCode, UseGuards } from '@nestjs/common';
 import { StructureService } from './structure.service';
 import { CreateStructureDto } from './dto/create-structure.dto';
 import { UpdateStructureDto } from './dto/update-structure.dto';
@@ -6,9 +6,10 @@ import { ResponseService } from 'src/services/response/response.service';
 import { DataRequest } from 'src/interface/DataRequest';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/common/helpers/multer.config';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('structure')
-
+@UseGuards(AuthGuard('jwt'))
 export class StructureController {
   constructor(private readonly structureService: StructureService, private responseService: ResponseService) {}
 

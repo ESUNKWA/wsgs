@@ -1,4 +1,5 @@
 import { IsNotEmpty } from "class-validator";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
 
 export class CreateStructureDto {
     
@@ -11,5 +12,8 @@ export class CreateStructureDto {
     rccm: string;
     situation_geo: string;
     logo: string;
+
+    @IsNotEmpty({message: 'Veuillez sélectionnez le gestionnaire de la structure'})
+    gestionnaire: Utilisateur;
 
 }

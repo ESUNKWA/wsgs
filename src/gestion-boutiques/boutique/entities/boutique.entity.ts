@@ -1,5 +1,6 @@
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
-import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
+import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_boutiques')
 export class Boutique {
@@ -25,6 +26,9 @@ export class Boutique {
     @Column({name: 'r_logo_path', nullable: true, unique: true, type:'character varying', length:255})
     logo: string| null;
 
-    @ManyToOne(type=> Structure, (structure) => structure.boutique, {eager: true, nullable: false})
+    @ManyToOne(type=> Structure, (structure) => structure.boutique, {eager: false, nullable: false})
     structure: Structure
+
+    @OneToMany(type=> Utilisateur, (utilisateur) => utilisateur.boutique)
+    utilisateur: Utilisateur
 }

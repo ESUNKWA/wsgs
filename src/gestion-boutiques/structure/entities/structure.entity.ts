@@ -1,6 +1,7 @@
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
-import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_structures')
 export class Structure extends defaultDateGeneratorHelper {
@@ -28,4 +29,8 @@ export class Structure extends defaultDateGeneratorHelper {
 
     @OneToMany(type => Boutique, (boutique) => boutique.structure)
     boutique: Boutique[];
+
+    @ManyToOne( type=> Utilisateur, (responsable)=> responsable.structure, 
+    {nullable: true, onDelete: 'SET NULL', eager: false})
+    responsable: Utilisateur 
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
 import { BoutiqueService } from './boutique.service';
 import { CreateBoutiqueDto } from './dto/create-boutique.dto';
 import { UpdateBoutiqueDto } from './dto/update-boutique.dto';
@@ -6,7 +6,9 @@ import { multerOptions } from 'src/common/helpers/multer.config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ResponseService } from 'src/services/response/response.service';
 import { DataRequest } from 'src/interface/DataRequest';
+import { AuthGuard } from '@nestjs/passport';
 
+@UseGuards(AuthGuard('jwt'))
 @Controller('boutique')
 export class BoutiqueController {
   constructor(private readonly boutiqueService: BoutiqueService, private responseService: ResponseService) {}

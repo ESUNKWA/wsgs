@@ -6,6 +6,7 @@ import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
 import { AuthGuard } from '@nestjs/passport';
 
+@UseGuards(AuthGuard('jwt'))
 @Controller('utilisateur')
 export class UtilisateursController {
   constructor(private readonly utilisateursService: UtilisateursService, private responseService: ResponseService) {}
@@ -17,14 +18,12 @@ export class UtilisateursController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
   async findAll(): Promise<DataRequest> {
     const data = await this.utilisateursService.findAll();
     return this.responseService.success('Liste des utilisateurs', data);
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
   async findOne(@Param('id') id: string): Promise<DataRequest> {
     const data = await this.utilisateursService.findOne(+id);
     return this.responseService.success('Utilisateur trouvé', data);
