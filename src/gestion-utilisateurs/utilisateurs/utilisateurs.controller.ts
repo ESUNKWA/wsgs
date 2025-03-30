@@ -6,7 +6,7 @@ import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
 import { AuthGuard } from '@nestjs/passport';
 
-//@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'))
 @Controller('utilisateur')
 export class UtilisateursController {
   constructor(private readonly utilisateursService: UtilisateursService, private responseService: ResponseService) {}
