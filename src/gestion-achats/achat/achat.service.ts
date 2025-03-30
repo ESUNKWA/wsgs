@@ -108,16 +108,16 @@ export class AchatService {
 
           // 1. Charger l'achat existant
           //const achat = await manager.findOne(Achat, { where: { id }, relations: ['detail_achat'] });
-          const achat = await manager.preload(Achat, { id, ...updateAchatDto });
-
+          const achat = await manager.preload(Achat, {id, ...updateAchatDto });
          
           if (!achat) {
             throw new Error('Achat introuvable');
           }
-          // 3. Supprimer les anciennes lignes (si c'est ce que tu veux)
+          
+          // 2. Supprimer les anciennes lignes (si c'est ce que tu veux)
           await manager.delete(DetailAchat, { achat: achat.id });        
       
-          // 4. Insérer les nouvelles lignes
+          // .3 Insérer les nouvelles lignes
           const lignes: DetailAchat[] = updateAchatDto.detail_achat.map((ligne: any) => {
             const l = new DetailAchat();
             l.produit = ligne.produit;
@@ -127,12 +127,12 @@ export class AchatService {
             return l;
           });
           
-          // 5. Sauvegarder l'achat modifié
+          // 4. Sauvegarder l'achat modifié
           await manager.save(Achat, achat);
           
           await manager.save(DetailAchat, lignes);
 
-           // 3. Supprimer les anciennes lignes d'historisation (si c'est ce que tu veux)
+           // 5. Supprimer les anciennes lignes d'historisation (si c'est ce que tu veux)
            await manager.delete(HistoriqueStock, { achat: achat.id }); 
 
           // Ajouter les lignes d'historisation des stocks
@@ -149,14 +149,13 @@ export class AchatService {
           // Insérer toutes les lignes en une seule requête
           await manager.save(lignesHistorik);
 
-          
-          // 1. Extraire les ids
+          // 6. Extraire les ids
           const produitsIds = updateAchatDto.detail_achat.map((ligne: any) => ligne.produit);
 
-          // 2. Charger les produits
+          // 7. Charger les produits
           const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
-          // 3. Ajuster le stock
+          // 8. Ajuster le stock
           for (const produit of produits) {
               const ligne = updateAchatDto.detail_achat.find((l: any) => l.produit === produit.id);
               if (ligne) {
@@ -169,7 +168,6 @@ export class AchatService {
         });
     } catch (error) {
       throw new InternalServerErrorException(error.message);
-    
     }
   }
 
