@@ -1,5 +1,7 @@
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Profil } from "src/gestion-utilisateurs/profils/entities/profil.entity";
-import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('utilisateurs')
 export class Utilisateur {
@@ -22,4 +24,10 @@ export class Utilisateur {
 
     @ManyToOne(type => Profil, (profil) => profil.utilisateur, {eager: true})
     profil: Profil;
+
+    @OneToMany(() => Structure, (structure) => structure.responsable)
+    structure: Structure[];
+
+    @ManyToOne(() => Boutique, (boutique) => boutique.utilisateur, {eager: false, nullable: true})
+    boutique: Boutique[];
 }
