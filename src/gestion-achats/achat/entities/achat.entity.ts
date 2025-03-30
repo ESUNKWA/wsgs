@@ -3,6 +3,7 @@ import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-ach
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 export type ModePaiement = "espece" | "carte"| "mobile_money";
 
@@ -59,4 +60,7 @@ export class Achat extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     historique_stock: HistoriqueStock[];
+
+    @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false})
+    boutique: Boutique[];
 }

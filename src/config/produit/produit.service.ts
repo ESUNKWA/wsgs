@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
 import { Repository } from 'typeorm';
@@ -26,20 +26,29 @@ export class ProduitService {
     }
   }
 
-  async findAll(): Promise<Produit[]> {
-    // Récupérer tous les produits depuis la base de données
-    const produits = await this.produitRepository.find({order: {'nom': 'ASC'}});
+  async findAll(body: {boutique: number}): Promise<Produit[]> {
+    try {
 
-    // Ajouter l'URL complète de l'image pour chaque produit
-    const produitsWithImagePath = produits.map((produit) => {
-    const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
-      return {
-        ...produit,
-        imageUrl: imagePath,  // Ajouter le champ imageUrl avec l'URL complète
-      };
-    });
+      if (isNaN(body.boutique)) {
+        throw new BadRequestException('Veuillez préciser la boutique');
+      }
+      // Récupérer tous les produits depuis la base de données
+      const produits = await this.produitRepository.find({where: {boutique: {id: body.boutique}}, order: {'nom': 'ASC'}});
 
-    return produitsWithImagePath;
+      // Ajouter l'URL complète de l'image pour chaque produit
+      const produitsWithImagePath = produits.map((produit) => {
+      const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
+        return {
+          ...produit,
+          imageUrl: imagePath,  // Ajouter le champ imageUrl avec l'URL complète
+        };
+      });
+
+      return produitsWithImagePath;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+
+    }
   }
 
   async findOne(id: number): Promise<Produit> {

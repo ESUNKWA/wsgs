@@ -19,8 +19,8 @@ export class AchatController {
   }
 
   @Get()
-  async findAll(): Promise<DataRequest> {
-    const data = await this.achatService.findAll();
+  async findAll(@Body() body: {boutique: number}): Promise<DataRequest> {
+    const data = await this.achatService.findAll(body);
     return this.responseService.success('Liste des achat', data);
 
   }

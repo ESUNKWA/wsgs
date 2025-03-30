@@ -24,8 +24,8 @@ export class ProduitController {
 
   @Get()
   @HttpCode(200)
-  async findAll(): Promise<DataRequest> {
-    const data = await this.produitService.findAll();
+  async findAll(@Body() body: {boutique: number}): Promise<DataRequest> {
+    const data = await this.produitService.findAll(body);
     return this.responseService.success('Liste des produits', data);
   }
 
