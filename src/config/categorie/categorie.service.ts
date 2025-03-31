@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
 import { Repository } from 'typeorm';
@@ -13,8 +13,19 @@ export class CategorieService {
     private categorieRepository: Repository<Categorie> ){}
 
   async create(createCategorieDto: CreateCategorieDto): Promise<Categorie> {
-    const data = await this.categorieRepository.save(createCategorieDto);
-    return data;
+    try {
+      const data = await this.categorieRepository.save(createCategorieDto);
+      return data;
+    } catch (error) {
+      if (error.code === '23505') {
+        // Vérifier le message pour savoir quelle contrainte est violée
+        if (error.detail.includes('nom')) {
+          throw new ConflictException('Cet nom est déjà utilisé');
+        }
+        throw new ConflictException('Cette donnée existe déjà en base');
+      }
+      throw new InternalServerErrorException('Erreur interne du serveur');
+    }
   }
 
   async findAll(): Promise<Categorie[]> {
