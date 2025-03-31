@@ -57,14 +57,18 @@ export class UtilisateursService {
   }
 
   async signin(email: string): Promise<Utilisateur> {
-    const data = await this.utilisateurRepository.findOne({
-      where: {email}, 
-      relations: ['structure', 'structure.boutique', 'boutique']
-    });
-    if(!data){
-      throw new NotFoundException('Email ou mot de passe incorrecte');
+    try {
+      const data = await this.utilisateurRepository.findOne({
+        where: {email}, 
+        relations: ['structure', 'structure.boutique', 'boutique']
+      });
+      if(!data){
+        throw new NotFoundException('Email ou mot de passe incorrecte');
+      }
+      
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
-    
-    return data;
   }
 }
