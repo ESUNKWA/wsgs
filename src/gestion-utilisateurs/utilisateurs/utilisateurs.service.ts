@@ -26,7 +26,6 @@ export class UtilisateursService {
   async findAll(): Promise<Utilisateur[]> {
     return await this.utilisateurRepository.find({
       order: {nom: 'ASC'}, 
-      select: ['nom', 'prenoms', 'email', 'profil'],
       relations: ['boutique']
     }) ;
   }
