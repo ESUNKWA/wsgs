@@ -1,10 +1,11 @@
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Profil } from "src/gestion-utilisateurs/profils/entities/profil.entity";
 import { Column, Entity, Index, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('utilisateurs')
-export class Utilisateur {
+export class Utilisateur extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
     id: number;
 
