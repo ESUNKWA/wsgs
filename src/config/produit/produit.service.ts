@@ -26,15 +26,16 @@ export class ProduitService {
     }
   }
 
-  async findAll(body: {boutique: number}): Promise<any> {
+  async findAll(query: {boutique: number}): Promise<Produit[]> {
     try {
-      
-      if (isNaN(body.boutique)) {
+      const { boutique } = query;
+     
+      if (isNaN(boutique)) {
         throw new BadRequestException('Veuillez préciser la boutique');
       }
       // Récupérer tous les produits depuis la base de données
-      const produits = await this.produitRepository.find({where: {boutique: {id: body.boutique}}, order: {nom: 'ASC'}});
-      return body;
+      const produits = await this.produitRepository.find({where: {boutique: {id: +boutique}}, order: {nom: 'ASC'}});
+
       // Ajouter l'URL complète de l'image pour chaque produit
       const produitsWithImagePath = produits.map((produit) => {
       const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
