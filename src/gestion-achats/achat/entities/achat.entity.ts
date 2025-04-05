@@ -61,6 +61,6 @@ export class Achat extends defaultDateGeneratorHelper {
     )
     historique_stock: HistoriqueStock[];
 
-    @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false})
+    @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
     boutique: Boutique[];
 }

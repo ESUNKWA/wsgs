@@ -103,6 +103,6 @@ export class Produit extends defaultDateGeneratorHelper {
     @Column({name: 'r_image', type:'character varying', length: 255, nullable: true})
     image: string| null;
 
-    @ManyToOne(type => Boutique, (boutique) => boutique.produit, {eager: false})
+    @ManyToOne(type => Boutique, (boutique) => boutique.produit, {eager: true})
     boutique: Boutique[];
 }

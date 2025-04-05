@@ -1,5 +1,6 @@
 import { IsNotEmpty } from "class-validator";
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 export class CreateProduitDto {
 
@@ -21,5 +22,5 @@ export class CreateProduitDto {
     @IsNotEmpty({
         message: 'Veuillez sélectionnez la boutique'
     })
-    bootique: number;
+    boutique: Boutique[];
 }

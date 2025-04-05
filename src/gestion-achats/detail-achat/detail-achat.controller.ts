@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { DetailAchatService } from './detail-achat.service';
 import { CreateDetailAchatDto } from './dto/create-detail-achat.dto';
 import { UpdateDetailAchatDto } from './dto/update-detail-achat.dto';
+import { Achat } from '../achat/entities/achat.entity';
 
 @Controller('detail-achat')
 export class DetailAchatController {
@@ -18,8 +19,8 @@ export class DetailAchatController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.detailAchatService.findOne(+id);
+  findOne(@Param('id') id: Achat) {
+    return this.detailAchatService.findOne(id);
   }
 
   @Patch(':id')

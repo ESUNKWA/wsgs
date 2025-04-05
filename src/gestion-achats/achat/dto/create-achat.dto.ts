@@ -1,5 +1,6 @@
 import { IsNotEmpty } from "class-validator";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 export class CreateAchatDto {
 
@@ -17,4 +18,7 @@ export class CreateAchatDto {
 
     @IsNotEmpty({message: 'Aucun achat effectué pour l\'instant'})
     detail_achat: DetailAchat[];
+
+    @IsNotEmpty({message: 'Aucune boutique reconnue'})
+    boutique: Boutique[];
 }
