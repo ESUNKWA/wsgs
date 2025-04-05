@@ -41,7 +41,7 @@ export class ProduitService {
       const imagePath = produit.image ? `/uploads/produits/${produit.image}` : null;
         return {
           ...produit,
-          imageUrl: imagePath,  // Ajouter le champ imageUrl avec l'URL complète
+          imageUrl: `${String(process.env.BASE_URL)}/${imagePath}`,  // Ajouter le champ imageUrl avec l'URL complète
         };
       });
 
