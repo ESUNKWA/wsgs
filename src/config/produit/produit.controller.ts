@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards, Query } from '@nestjs/common';
 import { ProduitService } from './produit.service';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
@@ -24,8 +24,8 @@ export class ProduitController {
 
   @Get()
   @HttpCode(200)
-  async findAll(@Body() body: {boutique: number}): Promise<DataRequest> {
-    const data = await this.produitService.findAll(body);
+  async findAll(@Query() query: {boutique: number}): Promise<DataRequest> {
+    const data = await this.produitService.findAll(query);
     return this.responseService.success('Liste des produits', data);
   }
 
