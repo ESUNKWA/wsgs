@@ -38,7 +38,7 @@ export class ProduitService {
 
       // Ajouter l'URL complète de l'image pour chaque produit
       const produitsWithImagePath = produits.map((produit) => {
-      const imagePath = produit.image ? `uploads/produits/${produit.image}` : null;
+      const imagePath = produit.image;
         return {
           ...produit,
           imageUrl: `${String(process.env.BASE_URL)}:${process.env.APP_PORT}/${imagePath}`,  // Ajouter le champ imageUrl avec l'URL complète
