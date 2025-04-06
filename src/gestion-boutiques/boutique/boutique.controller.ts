@@ -21,9 +21,9 @@ export class BoutiqueController {
     return this.responseService.success('Enregistement effectuée avec succès', data);
   }
 
-  @Get('all/:id')
-  async findAll(@Param('id') id: string): Promise<DataRequest> {
-    const data = await this.boutiqueService.findAll(+id);
+  @Get()
+  async findAll(): Promise<DataRequest> {
+    const data = await this.boutiqueService.findAll();
     return this.responseService.success('Liste des boutiques', data);
   }
 
