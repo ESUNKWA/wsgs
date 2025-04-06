@@ -1,4 +1,5 @@
 import { IsNotEmpty } from "class-validator";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 export class CreateAuthenticationDto {
 

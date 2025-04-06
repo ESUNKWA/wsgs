@@ -18,7 +18,6 @@ export class AuthenticationService {
       if (!utilisateur || !(await bcrypt.compare(createAuthenticationDto.mot_de_passe, utilisateur.mot_de_passe))) {
         throw new UnauthorizedException('Email ou mot de passe incorrect');
       }
-
       // Supprimer le mot de passe de l'utilisateur avant de renvoyer les données
       delete utilisateur.mot_de_passe;
       
