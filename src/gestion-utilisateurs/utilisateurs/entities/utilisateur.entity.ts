@@ -2,6 +2,7 @@ import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-gena
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Profil } from "src/gestion-utilisateurs/profils/entities/profil.entity";
+import { Vente } from "src/gestion-ventes/vente/entities/vente.entity";
 import { Column, Entity, Index, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('utilisateurs')
@@ -31,4 +32,7 @@ export class Utilisateur extends defaultDateGeneratorHelper {
 
     @ManyToOne(() => Boutique, (boutique) => boutique.utilisateur, {eager: false, nullable: true})
     boutique: Boutique[];
+
+    @OneToMany(() => Vente, (vente) => vente.user)
+    vente: Vente[];
 }

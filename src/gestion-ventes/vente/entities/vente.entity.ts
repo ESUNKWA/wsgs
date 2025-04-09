@@ -1,0 +1,58 @@
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
+import { ModePaiement } from "src/gestion-achats/achat/entities/achat.entity";
+import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
+import { DetailVente } from "src/gestion-ventes/detail-vente/entities/detail-vente.entity";
+import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+
+@Entity('t_ventes')
+export class Vente extends defaultDateGeneratorHelper {
+    
+    @PrimaryGeneratedColumn()
+    id: number;
+
+    @Index()
+    @Column({name: 'r_reference', type: 'character varying', length: 20, unique: true})
+    reference: string;
+
+    @Column({name: 'r_montant_total', nullable: false, type: 'real'})
+    montant_total: number;
+
+    @Column({
+        name: 'r_mode_paiement',
+        type: "enum",
+        enum: ["espece", "carte", "mobile_money"],
+        default: "espece"}
+    )
+    mode_paiement: ModePaiement;
+
+    @Column({name: 'r_statut', nullable: true, type: 'character varying', length: 10})
+    statut: string;
+
+    @Column({name: 'r_libelle', nullable: true, type: 'character varying', length: 35})
+    libelle: string;
+
+    @Column({name: 'r_description', nullable: true, type: 'text'})
+    description: string;
+
+    @OneToMany(
+        type => HistoriqueStock,
+        (historique_stock) => historique_stock.achat,
+        {onDelete: 'CASCADE'}
+    )
+    historique_stock: HistoriqueStock[];
+
+    @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
+    boutique: Boutique[];
+
+    @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: false, nullable: false})
+    user: Utilisateur[];
+
+    @OneToMany(
+        type => DetailVente,
+        (detail_vente) => detail_vente.vente,
+        {onDelete: 'CASCADE'}
+    )
+    detail_vente: DetailVente[];
+}

@@ -1,6 +1,7 @@
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Produit } from "src/config/produit/entities/produit.entity";
 import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
+import { Vente } from "src/gestion-ventes/vente/entities/vente.entity";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 export type Mouvement = "entree" | "sortie";
@@ -31,4 +32,7 @@ export class HistoriqueStock extends defaultDateGeneratorHelper {
 
     @ManyToOne(type=> Achat, (achat) => achat.historique_stock, {eager: true})
     achat: Achat;
+    
+    @ManyToOne(type=> Vente, (vente) => vente.historique_stock, {eager: true})
+    vente: Vente;
 }
