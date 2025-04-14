@@ -87,11 +87,11 @@ export class AchatService {
     
   }
 
-  async findAll(body: {boutique: number}): Promise<Achat[]>  {
-    if (isNaN(body.boutique)) {
+  async findAll(query: {boutique: number}): Promise<Achat[]>  {
+    if (isNaN(query.boutique)) {
       throw new BadRequestException('Veuillez préciser la boutique.');
     }
-    return await this.achatRepository.find({where: {boutique: {id: body.boutique}}, order: {'created_at': 'DESC'}});
+    return await this.achatRepository.find({where: {boutique: {id: query.boutique}}, order: {'created_at': 'DESC'}});
   }
 
   async findOne(id: number): Promise<Achat> {

@@ -121,7 +121,7 @@ export class VenteService {
                 const l = new DetailVente();
                 l.produit = ligne.produit;
                 l.quantite = ligne.quantite;
-                l.prix_unitaire_vente = ligne.prix_unitaire;
+                l.prix_unitaire_vente = ligne.prix_unitaire_vente;
                 l.vente = vente;
                 return l;
               });

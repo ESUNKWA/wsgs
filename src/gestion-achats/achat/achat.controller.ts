@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { AchatService } from './achat.service';
 import { CreateAchatDto } from './dto/create-achat.dto';
 import { UpdateAchatDto } from './dto/update-achat.dto';
@@ -19,8 +19,8 @@ export class AchatController {
   }
 
   @Get()
-  async findAll(@Body() body: {boutique: number}): Promise<DataRequest> {
-    const data = await this.achatService.findAll(body);
+  async findAll(@Query() query: {boutique: number}): Promise<DataRequest> {
+    const data = await this.achatService.findAll(query);
     return this.responseService.success('Liste des achat', data);
 
   }
