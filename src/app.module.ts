@@ -17,6 +17,7 @@ import { StructureModule } from './gestion-boutiques/structure/structure.module'
 import { BoutiqueModule } from './gestion-boutiques/boutique/boutique.module';
 import { VenteModule } from './gestion-ventes/vente/vente.module';
 import { DetailVenteModule } from './gestion-ventes/detail-vente/detail-vente.module';
+import { ClientModule } from './gestion-ventes/client/client.module';
 import * as path from 'path';
 
 @Module({
@@ -50,7 +51,8 @@ import * as path from 'path';
     StructureModule,
     BoutiqueModule,
     VenteModule,
-    DetailVenteModule
+    DetailVenteModule,
+    ClientModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],

@@ -3,6 +3,7 @@ import { ModePaiement } from "src/gestion-achats/achat/entities/achat.entity";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
+import { Client } from "src/gestion-ventes/client/entities/client.entity";
 import { DetailVente } from "src/gestion-ventes/detail-vente/entities/detail-vente.entity";
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
@@ -44,10 +45,10 @@ export class Vente extends defaultDateGeneratorHelper {
     historique_stock: HistoriqueStock[];
 
     @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
-    boutique: Boutique[];
+    boutique: Boutique;
 
     @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: false, nullable: false})
-    user: Utilisateur[];
+    user: Utilisateur;
 
     @OneToMany(
         type => DetailVente,
@@ -55,4 +56,7 @@ export class Vente extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     detail_vente: DetailVente[];
+
+    @ManyToOne(type => Client, (client) => client.vente, {eager: true, nullable: true})
+    client: Client;
 }

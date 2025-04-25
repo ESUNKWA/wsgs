@@ -8,6 +8,7 @@ import { Vente } from './entities/vente.entity';
 import { DetailVente } from '../detail-vente/entities/detail-vente.entity';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { Produit } from 'src/config/produit/entities/produit.entity';
+import { Client } from '../client/entities/client.entity';
 
 @Injectable()
 export class VenteService {
@@ -16,7 +17,8 @@ export class VenteService {
       private readonly dataSource: DataSource,
       @InjectRepository(Vente) private venteRepository: Repository<Vente>,
       @InjectRepository(DetailVente) private detailventeRepository: Repository<DetailVente>,
-      @InjectRepository(HistoriqueStock) private historiqueStockRepository: Repository<HistoriqueStock>
+      @InjectRepository(HistoriqueStock) private historiqueStockRepository: Repository<HistoriqueStock>,
+      @InjectRepository(Client) private clientRepository: Repository<Client>,
       
     ){}
     
@@ -24,8 +26,14 @@ export class VenteService {
     try {
     
       return await this.dataSource.transaction(async (manager)=>{
+
+          //créer un nouvel client
+          const client = manager.create(Client, createVenteDto.client);
+          const registerClient = await manager.save(client);
+
           // Créer un nouvel vente
           createVenteDto.reference = ReferenceGeneratorHelper.generate('VNT'); // utilisation du helper
+          createVenteDto.client = registerClient;
           const vente = manager.create(Vente, createVenteDto);
         
           // Sauvegarder la vente
@@ -75,7 +83,6 @@ export class VenteService {
           }
           await manager.save(Produit, produits);
 
-
           return vente;
 
         });
@@ -104,6 +111,13 @@ export class VenteService {
   async update(id: number, updateVenteDto: any): Promise<Vente> {
     try {
             return await this.dataSource.transaction(async (manager) => {
+
+              //Modification client
+              const client = await manager.preload(Client, {id, ...updateVenteDto .client});
+              if (!client) {
+                throw new Error('Client introuvable');
+              }
+              const registerClient = await manager.save(client);
     
               // 1. Charger l'achat existant
               //const achat = await manager.findOne(Achat, { where: { id }, relations: ['detail_achat'] });

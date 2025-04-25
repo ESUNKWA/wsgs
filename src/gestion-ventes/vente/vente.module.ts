@@ -7,9 +7,10 @@ import { Vente } from './entities/vente.entity';
 import { DetailVente } from '../detail-vente/entities/detail-vente.entity';
 import { HistoriqueStock } from 'src/gestion-achats/historique-stock/entities/historique-stock.entity';
 import { ResponseService } from 'src/services/response/response.service';
+import { Client } from '../client/entities/client.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Vente, DetailVente, HistoriqueStock])],
+  imports: [TypeOrmModule.forFeature([Vente, DetailVente, HistoriqueStock, Client])],
   controllers: [VenteController],
   providers: [VenteService, ResponseService],
 })

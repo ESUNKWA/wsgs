@@ -1,5 +1,6 @@
 import { IsNotEmpty } from "class-validator";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Client } from "src/gestion-ventes/client/entities/client.entity";
 import { DetailVente } from "src/gestion-ventes/detail-vente/entities/detail-vente.entity";
 
 export class CreateVenteDto {
@@ -15,7 +16,9 @@ export class CreateVenteDto {
     detail_vente: DetailVente[];
 
     @IsNotEmpty({message: 'Aucune boutique reconnue'})
-    boutique: Boutique[];
+    boutique: Boutique;
   
     static reference: string;
+
+    client: Client;
 }
