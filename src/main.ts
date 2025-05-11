@@ -14,6 +14,13 @@ async function bootstrap() {
   
   app.useGlobalPipes(new ValidationPipe());
 
+  app.enableCors({
+    origin: 'http://38.242.232.151:8080',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
+    credential: true,
+    allowedHeaders: 'Content-Type, Authorization'
+  });
+
   const config = new DocumentBuilder()
   .setTitle('StockFlow API')
   .setDescription('The cats API description')
