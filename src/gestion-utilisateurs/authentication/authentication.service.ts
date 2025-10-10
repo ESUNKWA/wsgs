@@ -2,8 +2,7 @@ import { Injectable, InternalServerErrorException, UnauthorizedException } from 
 import { CreateAuthenticationDto } from './dto/create-authentication.dto';
 import { UtilisateursService } from '../utilisateurs/utilisateurs.service';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
-import { CreateUtilisateurDto } from '../utilisateurs/dto/create-utilisateur.dto';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthenticationService {
@@ -23,7 +22,12 @@ export class AuthenticationService {
       
       const payload = { userId: utilisateur.id, email: utilisateur.email };
 
-      const access_token = this.jwtService.sign(payload, {secret: process.env.JWT_SECRET, expiresIn: process.env.JWT_TOKEN_EXPIRE,});
+      const access_token = this.jwtService.sign(payload,
+      {
+        secret: process.env.JWT_SECRET || 'secret',
+        expiresIn: process.env.JWT_TOKEN_EXPIRE || '1h',
+      } as JwtSignOptions,
+    );
       
       return { utilisateur: utilisateur, access_token };
 
