@@ -8,6 +8,10 @@ export class Profil extends defaultDateGeneratorHelper {
     id: number;
 
     @Index()
+    @Column({name: 'r_code', type:'character varying', length: 10, unique: true, nullable: true})
+    code: string;
+
+    @Index()
     @Column({name: 'r_nom', type:'character varying', length: 34, unique: true})
     nom: string;
 

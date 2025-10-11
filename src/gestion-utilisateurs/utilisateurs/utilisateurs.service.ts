@@ -41,6 +41,7 @@ export class UtilisateursService {
 
   async update(id: number, updateUtilisateurDto: UpdateUtilisateurDto): Promise<Utilisateur> {
     try {
+      delete updateUtilisateurDto.mot_de_passe;
       const profil = await this.utilisateurRepository.preload({id, ...updateUtilisateurDto});
       if(!profil){
         throw new NotFoundException('Utilisateur inexistant');

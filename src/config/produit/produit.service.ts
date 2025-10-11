@@ -15,6 +15,7 @@ export class ProduitService {
 
   async create(createProduitDto: CreateProduitDto, file?: Express.Multer.File): Promise<Produit> {
     try {
+      createProduitDto.stock_disponible = createProduitDto.stock_initial;
       const produit = this.produitRepository.create({
         ...createProduitDto,
         image: file ? 'uploads/produits/'+file.filename : null,  // Enregistre le nom du fichier de l'image

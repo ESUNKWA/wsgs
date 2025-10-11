@@ -23,4 +23,7 @@ export class CreateProduitDto {
         message: 'Veuillez sélectionnez la boutique'
     })
     boutique: Boutique[];
+
+    stock_disponible: number;
+    stock_initial: number;
 }

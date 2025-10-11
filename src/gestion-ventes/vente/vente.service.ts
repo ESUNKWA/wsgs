@@ -76,7 +76,10 @@ export class VenteService {
 
           // 3. Ajuster le stock
           for (const produit of produits) {
-              const ligne = createVenteDto.detail_vente.find((l: any) => l.produit === produit.id);
+            
+                
+              const ligne = createVenteDto.detail_vente.find((l: any) => l.produit == produit.id);
+              
               if (ligne) {
                   produit.stock_disponible -= ligne.quantite; // ou - ligne.quantite selon le mouvement
               }
@@ -97,11 +100,11 @@ export class VenteService {
      if (isNaN(query.boutique)) {
         throw new BadRequestException('Veuillez préciser la boutique.');
       }
-      return await this.venteRepository.find({where: {boutique: {id: query.boutique}}, order: {'created_at': 'DESC'}});
+      return await this.venteRepository.find({where: {boutique: {id: query.boutique}}, order: {montant_total: 'DESC'}});
   }
 
   async findOne(id: number): Promise<Vente> {
-    const achat = await this.venteRepository.findOne({where: {id: id}, relations: ['detail_vente'] });
+    const achat = await this.venteRepository.findOne({where: {id: id}, relations: ['detail_vente'], order: { created_at: 'ASC'}});
         if(!achat){
           throw new NotFoundException('Vente inexistant');
         }

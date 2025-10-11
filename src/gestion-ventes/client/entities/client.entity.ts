@@ -13,7 +13,7 @@ export class Client {
     prenoms: string;
 
     @Index()
-    @Column({ name: 'r_telephone', type: 'character varying', length: 35, nullable: false, unique: true})
+    @Column({ name: 'r_telephone', type: 'character varying', length: 35, nullable: true, unique: true})
     telephone: string;
 
     @Index()
