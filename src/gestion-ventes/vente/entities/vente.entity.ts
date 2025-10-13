@@ -47,7 +47,7 @@ export class Vente extends defaultDateGeneratorHelper {
     @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
     boutique: Boutique;
 
-    @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: false, nullable: false})
+    @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: true, nullable: false})
     user: Utilisateur;
 
     @OneToMany(
