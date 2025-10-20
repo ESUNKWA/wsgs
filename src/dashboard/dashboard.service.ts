@@ -31,6 +31,7 @@ export class DashboardService {
                     SUM(tv.r_montant_total) AS montant
                 FROM t_ventes tv
                 WHERE EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+                AND tv."boutiqueId" = $1
                 GROUP BY EXTRACT(MONTH FROM tv.created_at)
                 ORDER BY EXTRACT(MONTH FROM tv.created_at)
             ) AS t
@@ -87,7 +88,45 @@ export class DashboardService {
                                    GROUP BY tp.r_nom, tp.r_image
                                    ORDER BY quantite_vendu DESC
                                    LIMIT 10
-                               ) prod)
+                               ) prod),
+                  'dix_moins_vendu', (SELECT json_agg(prod ORDER BY prod.quantite_vendue ASC)
+                              FROM (
+                                  SELECT
+                                      tp.r_nom AS nom,
+                                      tp.r_image AS image,
+                                      COALESCE(SUM(tdv.r_quantite), 0) AS quantite_vendue,
+                                      COALESCE(SUM(tdv.r_prix_unitaire_vente * tdv.r_quantite), 0) AS montant_total
+                                  FROM t_produits tp
+                                  LEFT JOIN t_detail_ventes tdv ON tp.id = tdv."produitId"
+                                  LEFT JOIN t_ventes tv ON tv.id = tdv."venteId"
+                                  WHERE EXTRACT(MONTH FROM tv.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+                                    AND EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+                                    AND tv."boutiqueId" = $1
+                                  GROUP BY tp.r_nom, tp.r_image
+                                  ORDER BY quantite_vendue ASC
+                                  LIMIT 10
+                              ) prod
+                  ),
+                  'jamais_vendu', (
+                      SELECT json_agg(
+                          json_build_object(
+                              'id', tp.id,
+                              'nom', tp.r_nom,
+                              'image', tp.r_image,
+                              'stock_disponible', tp.r_stock_disponible
+                          )
+                      )
+                      FROM t_produits tp
+                      WHERE NOT EXISTS (
+                          SELECT 1
+                          FROM t_detail_ventes tdv
+                          JOIN t_ventes tv ON tv.id = tdv."venteId"
+                          WHERE tdv."produitId" = tp.id
+                            AND EXTRACT(MONTH FROM tv.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+                            AND EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+                            AND tv."boutiqueId" = $1
+                      )
+                  )
               )
           )
       ) as dash;

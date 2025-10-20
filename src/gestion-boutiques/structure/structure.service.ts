@@ -1,30 +1,76 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { CreateStructureDto } from './dto/create-structure.dto';
 import { UpdateStructureDto } from './dto/update-structure.dto';
 import { Structure } from './entities/structure.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import * as fs from 'fs';
+import { UtilisateursService } from 'src/gestion-utilisateurs/utilisateurs/utilisateurs.service';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { ProfilsService } from 'src/gestion-utilisateurs/profils/profils.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class StructureService {
 
   constructor( 
       @InjectRepository(Structure)
-      private structureRepository: Repository<Structure> ){}
+      private structureRepository: Repository<Structure>,
 
-  async create(createStructureDto: CreateStructureDto, file?: Express.Multer.File): Promise<Structure> {
+      private userService: UtilisateursService,
+      private profileService: ProfilsService,
+      private readonly dataSource: DataSource
+    ){}
+
+  async create(createStructureDto: CreateStructureDto, file?: Express.Multer.File): Promise<any> {
     
     try {
-      const data = this.structureRepository.create({
+
+      //Récupération des profils
+      const profils = await this.profileService.findAll();
+      const profilResponsable = profils.find(p => p.code === 'responsable_structure');
+
+      if (!profilResponsable) {
+        throw new NotAcceptableException('Profil du reponsable non trouvé');
+      }
+
+      createStructureDto.responsable.profil = profilResponsable;
+      const hashPassword = await bcrypt.hash(createStructureDto.responsable.mot_de_passe, 10);
+      createStructureDto.responsable.mot_de_passe = hashPassword;
+
+      return await this.dataSource.transaction(async (manager)=>{
+
+        //créer un nouvel utilisateurs
+        const user = manager.create(Utilisateur, createStructureDto.responsable);
+        const registerClient = await manager.save(user);
+
+
+        const structure = manager.create(Structure,{
+          ...createStructureDto,
+          logo: file ? 'uploads/logos/'+file.filename : null,
+          responsable: user  // Enregistre le nom du fichier de l'image
+        });
+        const saveStructure = await manager.save(structure);
+        
+        return structure;
+      });
+
+
+      /* const saveUser = await this.userService.create(createStructureDto.responsable);
+
+      const structure = this.structureRepository.create({
         ...createStructureDto,
         logo: file ? 'uploads/logos/'+file.filename : null,  // Enregistre le nom du fichier de l'image
       });
-      return await this.structureRepository.save(data);
+      const saveStructure = await this.structureRepository.save(structure);
+
+      return saveStructure */
 
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
+
+
     
   }
 

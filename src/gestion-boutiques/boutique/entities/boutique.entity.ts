@@ -28,7 +28,7 @@ export class Boutique {
     @Column({name: 'r_logo_path', nullable: true, unique: true, type:'character varying', length:255})
     logo: string| null;
 
-    @ManyToOne(type=> Structure, (structure) => structure.boutique, {eager: false, nullable: false})
+    @ManyToOne(type=> Structure, (structure) => structure.boutique, { nullable: false})
     structure: Structure
 
     @OneToMany(type=> Utilisateur, (utilisateur) => utilisateur.boutique)

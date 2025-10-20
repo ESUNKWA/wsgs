@@ -18,19 +18,19 @@ export class Structure extends defaultDateGeneratorHelper {
     @Column({name: 'r_email', nullable: true, unique: true, type:'character varying', length:35})
     email: string;
 
-    @Column({name: 'r_rccm', nullable: true, unique: true, type:'character varying', length:35})
+    @Column({name: 'r_rccm', nullable: true, type:'character varying', length:35})
     rccm: string;
 
-    @Column({name: 'r_situation_geo', nullable: true, unique: true, type:'character varying', length:255})
+    @Column({name: 'r_situation_geo', nullable: true, type:'character varying', length:255})
     situation_geo: string;
 
-    @Column({name: 'r_logo_path', nullable: true, unique: true, type:'character varying', length:255})
+    @Column({name: 'r_logo_path', nullable: true, type:'character varying', length:255})
     logo: string| null;
 
-    @OneToMany(type => Boutique, (boutique) => boutique.structure)
+    @OneToMany(type => Boutique, (boutique) => boutique.structure, {eager: true})
     boutique: Boutique[];
 
     @ManyToOne( type=> Utilisateur, (responsable)=> responsable.structure, 
-    {nullable: true, onDelete: 'SET NULL', eager: false})
+    {nullable: true, onDelete: 'SET NULL'})
     responsable: Utilisateur 
 }

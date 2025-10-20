@@ -13,7 +13,7 @@ export class CreateStructureDto {
     situation_geo: string;
     logo: string;
 
-    @IsNotEmpty({message: 'Veuillez sélectionnez le gestionnaire de la structure'})
-    gestionnaire: Utilisateur;
+    @IsNotEmpty({message: 'Veuillez saisir les info gestionnaire de la structure'})
+    responsable: Utilisateur;
 
 }
