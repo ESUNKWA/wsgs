@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { FournisseurService } from './fournisseur.service';
 import { CreateFournisseurDto } from './dto/create-fournisseur.dto';
 import { UpdateFournisseurDto } from './dto/update-fournisseur.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
 import { AuthGuard } from '@nestjs/passport';
+import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('fournisseur')
@@ -20,6 +21,12 @@ export class FournisseurController {
   @Get()
   async findAll(): Promise<DataRequest> {
     const data = await this.fournisseurService.findAll();
+    return this.responseService.success('Liste des fournisseurs', data);
+  }
+
+  @Get('boutique')
+  async findByBoutique(@Query('boutiqueId') boutique: number): Promise<DataRequest> {
+    const data = await this.fournisseurService.findByBoutique(boutique);
     return this.responseService.success('Liste des fournisseurs', data);
   }
 

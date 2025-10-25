@@ -4,6 +4,7 @@ import { UpdateFournisseurDto } from './dto/update-fournisseur.dto';
 import { Repository } from 'typeorm';
 import { Fournisseur } from './entities/fournisseur.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 
 @Injectable()
 export class FournisseurService {
@@ -23,6 +24,10 @@ export class FournisseurService {
 
   async findAll(): Promise<Fournisseur[]> {
     return await this.fournisseurRepository.find({order: {nom: 'ASC'}});
+  }
+
+  async findByBoutique(id: number): Promise<Fournisseur[]> {
+    return await this.fournisseurRepository.find({where:{boutique: {id}}, order: {nom: 'ASC'}});
   }
 
   async findOne(id: number): Promise<Fournisseur> {

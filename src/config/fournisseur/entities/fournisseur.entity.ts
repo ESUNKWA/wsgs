@@ -1,6 +1,7 @@
 import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
-import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 @Entity('t_fournisseurs')
 export class Fournisseur extends defaultDateGeneratorHelper {
@@ -14,7 +15,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
         nullable: false, 
         type: 'character varying',
         length: 35,
-        unique: true
+        unique: false
     })
     nom: string;
     
@@ -32,7 +33,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
         nullable: false, 
         type: 'character varying',
         length: 20,
-        unique: true
+        unique: false
     })
     contact: string;
 
@@ -41,7 +42,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
         nullable: true, 
         type: 'character varying',
         length: 35,
-        unique: true
+        unique: false
     })
     email: string;
 
@@ -58,7 +59,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
         nullable: true, 
         type: 'character varying',
         length: 20,
-        unique: true
+        unique: false
     })
     contact_interlocuteur: string
 
@@ -68,4 +69,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
         {onDelete: 'CASCADE'}
     )
     achat: Achat[];
+
+    @ManyToOne(() => Boutique, (boutique) => boutique.fournisseur, { cascade: true })
+    boutique: Boutique;
 }

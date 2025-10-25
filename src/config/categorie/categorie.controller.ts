@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Res, HttpCode, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res, HttpCode, UseGuards, Query } from '@nestjs/common';
 import { CategorieService } from './categorie.service';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
@@ -23,6 +23,13 @@ export class CategorieController {
   @HttpCode(200)
   async findAll(): Promise<DataRequest> {
     const data = await this.categorieService.findAll();
+    return this.responseService.success('Liste des catégories', data);
+  }
+
+  @Get('boutique')
+  @HttpCode(200)
+  async findByBoutik(@Query('boutiqueId') id: number): Promise<DataRequest> {
+    const data = await this.categorieService.findByBoutik(id);
     return this.responseService.success('Liste des catégories', data);
   }
 

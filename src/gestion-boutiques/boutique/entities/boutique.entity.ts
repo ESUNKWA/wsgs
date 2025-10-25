@@ -1,8 +1,10 @@
+import { Categorie } from "src/config/categorie/entities/categorie.entity";
+import { Fournisseur } from "src/config/fournisseur/entities/fournisseur.entity";
 import { Produit } from "src/config/produit/entities/produit.entity";
 import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
-import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_boutiques')
 export class Boutique {
@@ -39,4 +41,10 @@ export class Boutique {
 
     @OneToMany(achat=> Achat, (achat) => achat.boutique)
     achat: Achat[]
+
+    @OneToMany(() => Fournisseur, (fournisseur) => fournisseur.boutique)
+    fournisseur: Fournisseur;
+
+    @OneToMany(() => Categorie, (categorie) => categorie.boutique)
+    categorie: Categorie;
 }

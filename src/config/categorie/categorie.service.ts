@@ -33,6 +33,12 @@ export class CategorieService {
      return data;
   }
 
+  async findByBoutik(id: number): Promise<Categorie[]> {
+    
+     const data = await this.categorieRepository.find({where:{boutique: {id}}, order: {'nom': 'ASC'}}) ;
+     return data;
+  }
+
   async findOne(id: number): Promise<Partial<Categorie>> {
     try {
       const categorie = await this.categorieRepository.findOne({where: {
