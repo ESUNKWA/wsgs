@@ -15,7 +15,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.setGlobalPrefix('api')
   app.enableCors({
-    origin: 'http://38.242.232.151:3002',
+    origin: 'https://neurostock-api.ekwatech.com',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
     credential: true,
     allowedHeaders: 'Content-Type, Authorization'
