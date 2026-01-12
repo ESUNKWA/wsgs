@@ -13,7 +13,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.useGlobalPipes(new ValidationPipe());
-
+  app.setGlobalPrefix('api')
   app.enableCors({
     origin: 'http://38.242.232.151:3002',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
