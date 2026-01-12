@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';//Module pour l'utilisation des fichier .env
 
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 
 dotenv.config();
 
@@ -13,7 +12,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.useGlobalPipes(new ValidationPipe());
-  app.setGlobalPrefix('api')
   app.enableCors({
     origin: 'https://neurostock.ekwatech.com',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
