@@ -1,19 +1,20 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateUtilisateurDto } from './dto/create-utilisateur.dto';
 import { UpdateUtilisateurDto } from './dto/update-utilisateur.dto';
 import { Utilisateur } from './entities/utilisateur.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { ProfilsService } from '../profils/profils.service';
 
 @Injectable()
 export class UtilisateursService {
 
-  constructor( @InjectRepository(Utilisateur) private utilisateurRepository: Repository<Utilisateur> ){}
+  constructor( @InjectRepository(Utilisateur) private utilisateurRepository: Repository<Utilisateur>,  private profilService: ProfilsService ){}
 
   async create(createUtilisateurDto: CreateUtilisateurDto): Promise<any> {
     try {
-      const hashPassword = await bcrypt.hash(createUtilisateurDto.mot_de_passe, 10);
+      const hashPassword = await bcrypt.hash("12345", 10);
       createUtilisateurDto.mot_de_passe = hashPassword;
       //const utilisateur = this.utilisateurRepository.create({ ...createUtilisateurDto, mot_de_passe: hashPassword });
           return await this.utilisateurRepository.save(createUtilisateurDto);
@@ -21,6 +22,44 @@ export class UtilisateursService {
         } catch (error) {
           throw new InternalServerErrorException(error.message);
         }
+  }
+
+  async createAdminUser(createUtilisateurDto: CreateUtilisateurDto){
+    try {
+
+      //Vérifie si l'utilisateur admin existe
+      const IsAdminExiste = await this.utilisateurRepository.findOne({where: {is_admin: true}});
+     
+      if (IsAdminExiste) {
+        throw new ConflictException(
+          'Utilisateur admin déjà créer [ Nom et prenoms: ' + IsAdminExiste.nom + " " + IsAdminExiste.prenoms + "  Email: " + IsAdminExiste.email + " ]"
+        );
+      }
+
+      //Récupération du profil admin
+      const profil = await this.profilService.findOneByCode('admin');
+      
+      createUtilisateurDto.mot_de_passe = String(process.env.ADMIN_PASSWORD);
+      createUtilisateurDto.profil = profil;
+      createUtilisateurDto.is_admin = true;
+      
+      const hashPassword = await bcrypt.hash(createUtilisateurDto.mot_de_passe, 10);
+      createUtilisateurDto.mot_de_passe = hashPassword;
+      const user = await this.utilisateurRepository.save(createUtilisateurDto);
+      delete (user as any).mot_de_passe;
+      return user;
+    
+    } catch (error) {
+          if (error.code === '23505') {
+            // Vérifier le message pour savoir quelle contrainte est violée
+            if (error.detail.includes('email')) {
+              throw new ConflictException('Le mail existe déjà');
+            }
+            
+            throw new ConflictException('Cette donnée existe déjà en base' + error);
+          }
+          throw new BadRequestException('Erreur interne du serveur ' + error);
+    }
   }
 
   async findAll(): Promise<Utilisateur[]> {

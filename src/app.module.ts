@@ -20,6 +20,8 @@ import { DetailVenteModule } from './gestion-ventes/detail-vente/detail-vente.mo
 import { ClientModule } from './gestion-ventes/client/client.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import * as path from 'path';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -57,6 +59,9 @@ import * as path from 'path';
     DashboardModule
   ],
   controllers: [AppController],
-  providers: [AppService, ResponseService],
+  providers: [AppService, ResponseService, {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },],
 })
 export class AppModule {}

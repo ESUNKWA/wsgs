@@ -7,7 +7,6 @@ import { ResponseService } from 'src/services/response/response.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 
-@UseGuards(AuthGuard('jwt'))
 @Controller('fournisseur')
 export class FournisseurController {
   constructor(private readonly fournisseurService: FournisseurService, private responseService: ResponseService) {}

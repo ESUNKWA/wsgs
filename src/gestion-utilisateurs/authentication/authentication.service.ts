@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthenticationDto } from './dto/create-authentication.dto';
 import { UtilisateursService } from '../utilisateurs/utilisateurs.service';
 import * as bcrypt from 'bcrypt';
@@ -11,11 +11,10 @@ export class AuthenticationService {
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
    
-    try {
-      const utilisateur: any = await this.utulisateurService.signin(createAuthenticationDto.email);
+    const utilisateur: any = await this.utulisateurService.signin(createAuthenticationDto.email);
     
       if (!utilisateur || !(await bcrypt.compare(createAuthenticationDto.mot_de_passe, utilisateur.mot_de_passe))) {
-        throw new UnauthorizedException('Email ou mot de passe incorrect');
+        throw new NotFoundException('Email ou mot de passe incorrect');
       }
       // Supprimer le mot de passe de l'utilisateur avant de renvoyer les données
       delete utilisateur.mot_de_passe;
@@ -30,10 +29,6 @@ export class AuthenticationService {
     );
       
       return { utilisateur: utilisateur, access_token };
-
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
     
   }
 

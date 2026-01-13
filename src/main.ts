@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 import * as dotenv from 'dotenv';//Module pour l'utilisation des fichier .env
@@ -18,6 +18,7 @@ async function bootstrap() {
     credential: true,
     allowedHeaders: 'Content-Type, Authorization'
   });
+
 
   const config = new DocumentBuilder()
   .setTitle('StockFlow API')

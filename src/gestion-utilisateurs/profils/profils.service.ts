@@ -35,6 +35,15 @@ export class ProfilsService {
     return profil;
   }
 
+  async findOneByCode(code: string): Promise<Profil> {
+    const profil = await this.profilRepository.findOne({where: {code: code}});
+    if(!profil){
+      throw new NotFoundException('Profil inexistant');
+    }
+
+    return profil;
+  }
+
   async update(id: number, updateProfilDto: UpdateProfilDto) {
     try {
       const profil = await this.profilRepository.preload({id, ...updateProfilDto});
