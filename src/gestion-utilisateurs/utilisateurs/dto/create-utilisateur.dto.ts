@@ -21,7 +21,7 @@ export class CreateUtilisateurDto {
     boutique: Boutique[];
 
     @IsNotEmpty({message: 'Veuillez saisir le numéro de téléphone de l\'utilisateur'})
-    phone: string;
+    telephone: string;
 
     is_admin: boolean;
 }
