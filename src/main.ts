@@ -1,10 +1,11 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 import * as dotenv from 'dotenv';//Module pour l'utilisation des fichier .env
 
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 dotenv.config();
 
@@ -12,13 +13,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.useGlobalPipes(new ValidationPipe());
+  app.setGlobalPrefix('api')
   app.enableCors({
     origin: 'https://neurostock.ekwatech.com',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
     credential: true,
     allowedHeaders: 'Content-Type, Authorization'
   });
-
 
   const config = new DocumentBuilder()
   .setTitle('StockFlow API')
