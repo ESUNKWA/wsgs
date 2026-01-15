@@ -11,17 +11,16 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     id: number;
 
     @Index()
-    @Column({ unique: true })
+    @Column({ name: 'r_email', nullable: true, type: 'character varying'})
     email: string;
 
-    @Index()
-    @Column()
+    @Column({name: 'r_nom', length: 35, type: 'character varying'})
     nom: string;
 
     @Column({name: 'r_prenoms', length: 35, type: 'character varying'})
     prenoms: string;
 
-    @Column()
+    @Column({name: 'r_mot_de_passe', type: 'character varying'})
     mot_de_passe: string;
 
     @ManyToOne(type => Profil, (profil) => profil.utilisateur, {eager: true})
@@ -35,4 +34,10 @@ export class Utilisateur extends defaultDateGeneratorHelper {
 
     @OneToMany(() => Vente, (vente) => vente.user)
     vente: Vente[];
+
+    @Column({name: 'r_is_admin', default: false})
+    is_admin: boolean;
+
+    @Column({name: 'r_telephone', length: 10, type: 'character varying', nullable: false})
+    telephone: string;
 }

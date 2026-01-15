@@ -21,6 +21,8 @@ import { ClientModule } from './gestion-ventes/client/client.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { OllamaModule } from './ollama/ollama.module';
 import * as path from 'path';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -59,6 +61,9 @@ import * as path from 'path';
     OllamaModule
   ],
   controllers: [AppController],
-  providers: [AppService, ResponseService],
+  providers: [AppService, ResponseService, {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },],
 })
 export class AppModule {}

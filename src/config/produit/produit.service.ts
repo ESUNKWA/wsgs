@@ -42,7 +42,7 @@ export class ProduitService {
       const imagePath = produit.image;
         return {
           ...produit,
-          imageUrl: `${String(process.env.BASE_URL)}:${process.env.APP_PORT}/${imagePath}`,  // Ajouter le champ imageUrl avec l'URL complète
+          imageUrl: `${String(process.env.BASE_URL)}/${imagePath}`,  // Ajouter le champ imageUrl avec l'URL complète
         };
       });
 

@@ -10,15 +10,18 @@ export class CreateUtilisateurDto {
     @IsNotEmpty({message: 'Veuillez saisir le prenoms de l\'utilisateur'})
     prenoms: string;
 
-    @IsNotEmpty({message: 'Veuillez saisir le mail de l\'utilisateur'})
     email: string;
 
     @IsNotEmpty({message: 'Veuillez saisir le profil de l\'utilisateur'})
     profil: Profil
 
-    @IsNotEmpty({message: 'Veuillez saisir le mot de passe de l\'utilisateur'})
     mot_de_passe: string
 
-    @IsNotEmpty({message: 'Veuillez selectionner la boutique de l\'utilisateur'})
+    //@IsNotEmpty({message: 'Veuillez selectionner la boutique de l\'utilisateur'})
     boutique: Boutique[];
+
+    @IsNotEmpty({message: 'Veuillez saisir le numéro de téléphone de l\'utilisateur'})
+    telephone: string;
+
+    is_admin: boolean;
 }

@@ -37,7 +37,6 @@ export class StructureService {
       createStructureDto.responsable.profil = profilResponsable;
       const hashPassword = await bcrypt.hash(createStructureDto.responsable.mot_de_passe, 10);
       createStructureDto.responsable.mot_de_passe = hashPassword;
-
       return await this.dataSource.transaction(async (manager)=>{
 
         //créer un nouvel utilisateurs
@@ -76,7 +75,7 @@ export class StructureService {
 
   async findAll(): Promise<Structure[]> {
     // Récupérer tous les produits depuis la base de données
-    const structure = await this.structureRepository.find({order: {'nom': 'ASC'}});
+    const structure = await this.structureRepository.find({order: {'nom': 'ASC'}, relations: ['responsable']});
 
     // Ajouter l'URL complète de l'image pour chaque produit
     const structureWithLogoPath = structure.map((structure) => {

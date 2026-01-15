@@ -21,10 +21,8 @@ export class Fournisseur extends defaultDateGeneratorHelper {
     
     @Column({
         name: 'r_addresse_geo', 
-        nullable: false, 
-        type: 'character varying',
-        length: 35,
-        unique: false
+        nullable: true, 
+        type: 'character varying'
     })
     addresse_geo: string;
 
@@ -40,9 +38,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
     @Column({
         name: 'r_email', 
         nullable: true, 
-        type: 'character varying',
-        length: 35,
-        unique: false
+        type: 'character varying'
     })
     email: string;
 

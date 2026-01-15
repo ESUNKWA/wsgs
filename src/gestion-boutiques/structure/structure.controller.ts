@@ -9,7 +9,6 @@ import { multerOptions } from 'src/common/helpers/multer.config';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('structure')
-@UseGuards(AuthGuard('jwt'))
 export class StructureController {
   constructor(private readonly structureService: StructureService, private responseService: ResponseService) {}
 
