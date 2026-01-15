@@ -19,6 +19,7 @@ import { VenteModule } from './gestion-ventes/vente/vente.module';
 import { DetailVenteModule } from './gestion-ventes/detail-vente/detail-vente.module';
 import { ClientModule } from './gestion-ventes/client/client.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { OllamaModule } from './ollama/ollama.module';
 import * as path from 'path';
 
 @Module({
@@ -54,7 +55,8 @@ import * as path from 'path';
     VenteModule,
     DetailVenteModule,
     ClientModule,
-    DashboardModule
+    DashboardModule,
+    OllamaModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService],
