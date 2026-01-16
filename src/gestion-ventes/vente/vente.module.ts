@@ -13,5 +13,6 @@ import { Client } from '../client/entities/client.entity';
   imports: [TypeOrmModule.forFeature([Vente, DetailVente, HistoriqueStock, Client])],
   controllers: [VenteController],
   providers: [VenteService, ResponseService],
+    exports: [VenteService], 
 })
 export class VenteModule {}

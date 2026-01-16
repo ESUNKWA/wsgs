@@ -11,6 +11,6 @@ import { HistoriqueStock } from '../historique-stock/entities/historique-stock.e
 @Module({
   imports: [TypeOrmModule.forFeature([Achat, DetailAchat, HistoriqueStock]), DetailAchatModule],
   controllers: [AchatController],
-  providers: [AchatService, ResponseService],
+  providers: [AchatService, ResponseService]
 })
 export class AchatModule {}

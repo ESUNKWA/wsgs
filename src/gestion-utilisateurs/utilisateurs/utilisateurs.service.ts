@@ -62,11 +62,23 @@ export class UtilisateursService {
     }
   }
 
-  async findAll(): Promise<Utilisateur[]> {
+  async findAll(profilCode: string, boutique: string): Promise<Utilisateur[]> {
+    console.log(profilCode);
+    console.log(boutique)
+    
+    if (profilCode == 'admin') {
+      return await this.utilisateurRepository.find({
+        order: {nom: 'ASC'}, 
+        relations: ['boutique']
+      }) ;
+    }
+
     return await this.utilisateurRepository.find({
+      where: {boutique: {id: +boutique}},
       order: {nom: 'ASC'}, 
       relations: ['boutique']
     }) ;
+
   }
 
   async findOne(id: number): Promise<Utilisateur> {

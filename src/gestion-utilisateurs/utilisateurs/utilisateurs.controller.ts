@@ -1,13 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { UtilisateursService } from './utilisateurs.service';
 import { CreateUtilisateurDto } from './dto/create-utilisateur.dto';
 import { UpdateUtilisateurDto } from './dto/update-utilisateur.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
-import { AuthGuard } from '@nestjs/passport';
-import { Public } from '../authentication/auth/public.decorator';
 
-//@UseGuards(AuthGuard('jwt'))
+
 @Controller('utilisateur')
 export class UtilisateursController {
   constructor(private readonly utilisateursService: UtilisateursService, private responseService: ResponseService) {}
@@ -18,7 +16,6 @@ export class UtilisateursController {
     return this.responseService.success('Enregistrement effectués avec succès', data);
   }
 
-  @Public()
   @Post('admin')
   async createAdminUser(@Body() createUtilisateurDto: CreateUtilisateurDto): Promise<DataRequest> {
     const data = await this.utilisateursService.createAdminUser(createUtilisateurDto);
@@ -26,8 +23,8 @@ export class UtilisateursController {
   }
 
   @Get()
-  async findAll(): Promise<DataRequest> {
-    const data = await this.utilisateursService.findAll();
+  async findAll(@Query('profil') profil: string, @Query('boutique') boutique: string): Promise<DataRequest> {
+    const data = await this.utilisateursService.findAll(profil, boutique);
     return this.responseService.success('Liste des utilisateurs', data);
   }
 

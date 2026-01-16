@@ -22,7 +22,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { OllamaModule } from './ollama/ollama.module';
 import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard';
+import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard'
+import { DataProviderService } from './ollama/ai/data-provider/data-provider.service';
+import { PromptBuilderService } from './ollama/ai/prompt-builder/prompt-builder.service';
 
 @Module({
   imports: [
@@ -64,6 +66,6 @@ import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-aut
   providers: [AppService, ResponseService, {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    },],
+    }],
 })
 export class AppModule {}

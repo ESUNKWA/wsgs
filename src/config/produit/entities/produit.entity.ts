@@ -105,4 +105,7 @@ export class Produit extends defaultDateGeneratorHelper {
 
     @ManyToOne(type => Boutique, (boutique) => boutique.produit, {eager: true})
     boutique: Boutique[];
+
+    @Column({name: 'r_seuil_alert', type:'integer', default: 2, nullable: true})
+    seuil_alert: number;
 }

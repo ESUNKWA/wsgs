@@ -8,6 +8,6 @@ import { ResponseService } from 'src/services/response/response.service';
 @Module({
   imports:[TypeOrmModule.forFeature([Produit])],
   controllers: [ProduitController],
-  providers: [ProduitService, ResponseService],
+  providers: [ProduitService, ResponseService]
 })
 export class ProduitModule {}

@@ -8,6 +8,6 @@ import { ResponseService } from 'src/services/response/response.service';
 @Module({
   imports: [TypeOrmModule.forFeature([Profil])],
   controllers: [ProfilsController],
-  providers: [ProfilsService, ResponseService],
+  providers: [ProfilsService, ResponseService]
 })
 export class ProfilsModule {}

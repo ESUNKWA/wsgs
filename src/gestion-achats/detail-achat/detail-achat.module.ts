@@ -7,6 +7,6 @@ import { DetailAchat } from './entities/detail-achat.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([DetailAchat])],
   controllers: [DetailAchatController],
-  providers: [DetailAchatService],
+  providers: [DetailAchatService]
 })
 export class DetailAchatModule {}
