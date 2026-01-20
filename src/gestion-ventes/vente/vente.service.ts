@@ -34,6 +34,7 @@ export class VenteService {
           // Créer un nouvel vente
           createVenteDto.reference = ReferenceGeneratorHelper.generate('VNT'); // utilisation du helper
           createVenteDto.client = registerClient;
+          //createVenteDto.montant_total_apres_remise = createVenteDto.montant_total - createVenteDto.remise
           const vente = manager.create(Vente, createVenteDto);
         
           // Sauvegarder la vente

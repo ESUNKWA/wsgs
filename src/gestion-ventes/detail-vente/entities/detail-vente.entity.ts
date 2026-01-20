@@ -16,7 +16,7 @@ export class DetailVente {
     @ManyToOne(type=> Produit, (produit) => produit.detail_achat, {eager: true})
     produit: Produit;
 
-    @ManyToOne(type=> Vente, (vente) => vente.detail_vente, {eager: true, nullable: false})
+    @ManyToOne(type=> Vente, (vente) => vente.detail_vente, {eager: false, nullable: false})
     @JoinColumn({ name: 'venteId' })
     vente: Vente;
 }

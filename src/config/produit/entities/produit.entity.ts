@@ -1,10 +1,11 @@
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
 import { DetailAchat } from "src/gestion-achats/detail-achat/entities/detail-achat.entity";
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
-import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
+@Unique(['boutique', 'nom'])
 @Entity('t_produits')
 export class Produit extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
@@ -15,8 +16,7 @@ export class Produit extends defaultDateGeneratorHelper {
         name: 'r_nom',
         nullable: false,
         length: 35,
-        type: 'character varying',
-        unique: true
+        type: 'character varying'
     })
     nom: string;
 

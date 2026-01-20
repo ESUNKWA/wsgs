@@ -4,6 +4,7 @@ import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-gena
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
 
 export type ModePaiement = "espece" | "carte"| "mobile_money";
 
@@ -63,4 +64,9 @@ export class Achat extends defaultDateGeneratorHelper {
 
     @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
     boutique: Boutique[];
+
+    @ManyToOne(type => Utilisateur, (user) => user.achat, {eager: true, nullable: true})
+    user: Utilisateur;
+
+    
 }

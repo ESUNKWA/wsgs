@@ -1,4 +1,5 @@
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
+import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Profil } from "src/gestion-utilisateurs/profils/entities/profil.entity";
@@ -35,9 +36,12 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     @OneToMany(() => Vente, (vente) => vente.user)
     vente: Vente[];
 
+    @OneToMany(type=> Achat, (achat)=> achat.user)
+    achat: Achat[];
+
     @Column({name: 'r_is_admin', default: false})
     is_admin: boolean;
 
-    @Column({name: 'r_telephone', length: 10, type: 'character varying', nullable: false})
+    @Column({name: 'r_telephone', length: 10, type: 'character varying', nullable: false, unique: false})
     telephone: string;
 }

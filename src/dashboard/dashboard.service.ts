@@ -9,6 +9,8 @@ export class DashboardService {
   constructor(private readonly dataSource: DataSource) {}
 
   async getDashboardStats(boutiqueId: number) {
+    console.log('boutiqueId ',boutiqueId);
+    
     const query = `
       SELECT json_build_object(
           'vente_par_mois', (SELECT array_to_json(array_agg(row_to_json(t)))
@@ -38,7 +40,7 @@ export class DashboardService {
             ),
           'produit', (
               SELECT json_build_object(
-                  'total_stock_dispo', (SELECT SUM(tp.r_stock_disponible) 
+                  'total_stock_dispo', (SELECT SUM(tp.r_prix_achat) 
                                         FROM t_produits tp  
                                         WHERE DATE(tp.created_at) = CURRENT_DATE 
                                           AND tp."boutiqueId" = $1),
@@ -48,11 +50,24 @@ export class DashboardService {
                                     'path',tp.r_image,
                                      'nom', tp.r_nom,
                                      'stock_disponible', tp.r_stock_disponible,
-                                     'seuil_alert', tp.r_stock_minimum
+                                     'seuil_alert', tp.r_seuil_alert
                                  )
                              )
                       FROM t_produits tp
-                      WHERE tp.r_stock_disponible - tp.r_stock_minimum <= 0
+                      WHERE tp.r_stock_disponible - tp.r_seuil_alert <= 0
+                        AND tp."boutiqueId" = $1
+                  ),
+                  'stock_rupture', (
+                      SELECT json_agg(
+                                 json_build_object(
+                                    'path',tp.r_image,
+                                     'nom', tp.r_nom,
+                                     'stock_disponible', tp.r_stock_disponible,
+                                     'seuil_alert', tp.r_seuil_alert
+                                 )
+                             )
+                      FROM t_produits tp
+                      WHERE tp.r_stock_disponible = 0
                         AND tp."boutiqueId" = $1
                   )
               )
@@ -67,11 +82,22 @@ export class DashboardService {
                                      FROM t_ventes tv  
                                      WHERE DATE(tv.created_at) = CURRENT_DATE 
                                        AND tv."boutiqueId" = $1),
+                   'total_vente_hier', (SELECT COALESCE(SUM(r_montant_total), 0) AS ca_hier
+										FROM t_ventes
+										WHERE created_at >= CURRENT_DATE - INTERVAL '1 day'
+										  AND created_at < CURRENT_DATE
+													  AND "boutiqueId" = $1),
                   'total_vente_mois', (SELECT coalesce(SUM(tv.r_montant_total),0)
                                        FROM t_ventes tv 
                                        WHERE EXTRACT(MONTH FROM tv.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
                                          AND EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
                                          AND tv."boutiqueId" = $1),
+                  'total_vente_mois_passe', (SELECT COALESCE(SUM(tv.r_montant_total), 0) AS total_vente_mois_precedent
+												FROM t_ventes tv
+												WHERE EXTRACT(MONTH FROM tv.created_at) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+												  AND EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
+												  AND tv."boutiqueId" = $1
+												),			
                   'top_dix', (SELECT json_agg(prod ORDER BY prod.quantite_vendu DESC)
                                FROM (
                                    SELECT
@@ -107,29 +133,46 @@ export class DashboardService {
                                   LIMIT 10
                               ) prod
                   ),
-                  'jamais_vendu', (
+                  'jamais_vendu_un_mois_apres_saisie', (
                       SELECT json_agg(
-                          json_build_object(
-                              'id', tp.id,
-                              'nom', tp.r_nom,
-                              'image', tp.r_image,
-                              'stock_disponible', tp.r_stock_disponible
-                          )
-                      )
-                      FROM t_produits tp
-                      WHERE NOT EXISTS (
-                          SELECT 1
-                          FROM t_detail_ventes tdv
-                          JOIN t_ventes tv ON tv.id = tdv."venteId"
-                          WHERE tdv."produitId" = tp.id
-                            AND EXTRACT(MONTH FROM tv.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
-                            AND EXTRACT(YEAR FROM tv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-                            AND tv."boutiqueId" = $1
-                      )
+					  json_build_object(
+					    'nom', tp.r_nom,
+					    'image', tp.r_image,
+					    'stock_disponible', tp.r_stock_disponible
+					  )
+					)
+					FROM t_produits tp
+					WHERE tp."boutiqueId" = $1
+					  AND tp.created_at <= CURRENT_DATE - INTERVAL '1 month'
+					  AND NOT EXISTS (
+					    SELECT 1
+					    FROM t_detail_ventes tdv
+					    WHERE tdv."produitId" = tp.id
+					  )
+                  ),
+                  'vendu_depuis_mois', (
+                  	SELECT json_agg(
+					    json_build_object(
+					        'id', tp.id,
+					        'nom', tp.r_nom,
+					        'image', tp.r_image,
+					        'stock_disponible', tp.r_stock_disponible,
+					        'date_creation', tp.created_at
+					    )
+					)
+					FROM t_produits tp
+					LEFT JOIN t_detail_ventes tdv ON tdv."produitId" = tp.id
+					LEFT JOIN t_ventes tv 
+					  ON tv.id = tdv."venteId"
+					 AND tv.created_at >= CURRENT_DATE - INTERVAL '1 month'
+					WHERE tp."boutiqueId" = $1
+					  AND tp.created_at <= CURRENT_DATE - INTERVAL '1 month'
+					GROUP BY tp.id
+					HAVING COUNT(tv.id) = 0
                   )
               )
           )
-      ) as dash;
+      ) as dash
     `;
 
     const result = await this.dataSource.query(query, [boutiqueId]);

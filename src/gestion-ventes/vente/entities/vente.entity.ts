@@ -17,9 +17,6 @@ export class Vente extends defaultDateGeneratorHelper {
     @Column({name: 'r_reference', type: 'character varying', length: 20, unique: true})
     reference: string;
 
-    @Column({name: 'r_montant_total', nullable: false, type: 'real'})
-    montant_total: number;
-
     @Column({
         name: 'r_mode_paiement',
         type: "enum",
@@ -59,4 +56,19 @@ export class Vente extends defaultDateGeneratorHelper {
 
     @ManyToOne(type => Client, (client) => client.vente, {eager: true, nullable: true})
     client: Client;
+
+    @Column({name: 'r_montant_total', nullable: false, type: 'real'})
+    montant_total: number;
+
+    @Column({name: 'r_remise', nullable: true, type: 'real'})
+    remise: number;
+
+    @Column({name: 'r_montant_recu', nullable: true, type: 'real'})
+    montant_recu: number;
+
+    @Column({name: 'r_monnaie_rendu', nullable: true, type: 'real'})
+    monnaie_rendu: number;
+
+    @Column({name: 'r_montant_total_apres_remise', nullable: true, default:0, type: 'real'})
+    montant_total_apres_remise: number;
 }

@@ -21,4 +21,7 @@ export class CreateVenteDto {
     static reference: string;
 
     client: Client;
+
+    montant_total_apres_remise: number;
+    remise: number;
 }

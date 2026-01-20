@@ -26,4 +26,6 @@ export class CreateProduitDto {
 
     stock_disponible: number;
     stock_initial: number;
+
+    seuil_alert: number;
 }

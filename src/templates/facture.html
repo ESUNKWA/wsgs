@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Facture</title>
+  <style>
+    body {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    margin: 0;
+    padding: 20px;
+    padding-bottom: 80px; /* espace réservé pour le footer */
+  }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      width: 120px;
+    }
+
+    .boutique-info {
+      text-align: right;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 20px;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+
+    .infos {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .box {
+      width: 48%;
+      border: 1px solid #000;
+      padding: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .total-box {
+      margin-top: 20px;
+      width: 40%;
+      float: right;
+      border: 1px solid #000;
+    }
+
+    .total-box td {
+      padding: 8px;
+    }
+
+
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    text-align: center;
+    font-size: 11px;
+    border-top: 1px solid #000;
+    padding-top: 10px;
+    background: #fff;
+  }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <img src="{{logo}}" class="logo" alt="Logo Boutique">
+    <div class="boutique-info">
+      <strong>{{boutique_nom}}</strong><br>
+      {{boutique_adresse}}<br>
+      Tél : {{boutique_telephone}}<br>
+      Email : {{boutique_email}}
+    </div>
+  </div>
+
+  <!-- TITRE -->
+  <div class="title">FACTURE</div>
+
+  <!-- INFOS CLIENT / FACTURE -->
+  <div class="infos">
+    <div class="box">
+      <strong>Client</strong><br>
+      Nom : {{client_nom}}<br>
+      Téléphone : {{client_telephone}}<br>
+      Adresse : {{client_adresse}}
+    </div>
+
+    <div class="box">
+      <strong>Détails facture</strong><br>
+      Numéro : {{numero_facture}}<br>
+      Date : {{date}}<br>
+      Caissier : {{caissier}}
+    </div>
+  </div>
+
+  <!-- TABLE PRODUITS -->
+  <table>
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th>Quantité</th>
+        <th>Prix unitaire (FCFA)</th>
+        <th>Total (FCFA)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{lignes}}
+    </tbody>
+  </table>
+
+  <!-- TOTAL -->
+  <table class="total-box">
+    <tr>
+      <td><strong>Total</strong></td>
+      <td class="text-right"><strong>{{total}} FCFA</strong></td>
+    </tr>
+  </table>
+
+  <div style="clear: both;"></div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Merci pour votre confiance 🙏 <br>
+    Facture générée par le système de gestion Ekwatech
+  </div>
+
+</body>
+</html>

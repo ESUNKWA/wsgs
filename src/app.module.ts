@@ -25,6 +25,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard'
 import { DataProviderService } from './ollama/ai/data-provider/data-provider.service';
 import { PromptBuilderService } from './ollama/ai/prompt-builder/prompt-builder.service';
+import { PdfModule } from './documents/pdf/pdf.module';
 
 @Module({
   imports: [
@@ -60,7 +61,8 @@ import { PromptBuilderService } from './ollama/ai/prompt-builder/prompt-builder.
     DetailVenteModule,
     ClientModule,
     DashboardModule,
-    OllamaModule
+    OllamaModule,
+    PdfModule
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService, {
