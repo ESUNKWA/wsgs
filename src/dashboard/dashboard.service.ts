@@ -9,7 +9,6 @@ export class DashboardService {
   constructor(private readonly dataSource: DataSource) {}
 
   async getDashboardStats(boutiqueId: number) {
-    console.log('boutiqueId ',boutiqueId);
     
     const query = `
       SELECT json_build_object(
