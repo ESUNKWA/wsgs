@@ -29,9 +29,9 @@ export class BoutiqueService {
       
   }
   
-  async findAll(): Promise<Boutique[]> {
+  async findAll(idStructure: string): Promise<Boutique[]> {
     // Récupérer tous les produits depuis la base de données
-    const structure = await this.boutiqueRepository.find({order: {'nom': 'ASC'}});
+    const structure = await this.boutiqueRepository.find({ where: {structure: {id: +idStructure}}, order: {'nom': 'ASC'}});
 
     // Ajouter l'URL complète de l'image pour chaque produit
     const structureWithLogoPath = structure.map((structure) => {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards, Query } from '@nestjs/common';
 import { BoutiqueService } from './boutique.service';
 import { CreateBoutiqueDto } from './dto/create-boutique.dto';
 import { UpdateBoutiqueDto } from './dto/update-boutique.dto';
@@ -8,7 +8,7 @@ import { ResponseService } from 'src/services/response/response.service';
 import { DataRequest } from 'src/interface/DataRequest';
 import { AuthGuard } from '@nestjs/passport';
 
-@UseGuards(AuthGuard('jwt'))
+
 @Controller('boutique')
 export class BoutiqueController {
   constructor(private readonly boutiqueService: BoutiqueService, private responseService: ResponseService) {}
@@ -22,8 +22,8 @@ export class BoutiqueController {
   }
 
   @Get()
-  async findAll(): Promise<DataRequest> {
-    const data = await this.boutiqueService.findAll();
+  async findAll(@Query('structure') structure: string): Promise<DataRequest> {
+    const data = await this.boutiqueService.findAll(structure);
     return this.responseService.success('Liste des boutiques', data);
   }
 

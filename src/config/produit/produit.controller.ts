@@ -8,7 +8,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/common/helpers/multer.config';
 import { AuthGuard } from '@nestjs/passport';
 
-@UseGuards(AuthGuard('jwt'))
+
 @Controller('produit')
 export class ProduitController {
   constructor(private readonly produitService: ProduitService, private responseService: ResponseService) {}
