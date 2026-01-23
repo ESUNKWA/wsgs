@@ -4,7 +4,7 @@ import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entit
 import { Structure } from "src/gestion-boutiques/structure/entities/structure.entity";
 import { Profil } from "src/gestion-utilisateurs/profils/entities/profil.entity";
 import { Vente } from "src/gestion-ventes/vente/entities/vente.entity";
-import { Column, Entity, Index, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('utilisateurs')
 export class Utilisateur extends defaultDateGeneratorHelper {
