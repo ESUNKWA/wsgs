@@ -63,8 +63,6 @@ export class UtilisateursService {
   }
 
   async findAll(profilCode: string, boutique: string): Promise<Utilisateur[]> {
-    console.log(profilCode);
-    console.log(boutique)
     
     if (profilCode == 'admin') {
       return await this.utilisateurRepository.find({

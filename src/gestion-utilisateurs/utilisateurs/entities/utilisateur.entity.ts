@@ -12,7 +12,7 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     id: number;
 
     @Index()
-    @Column({ name: 'r_email', nullable: true, type: 'character varying'})
+    @Column({ name: 'r_email', nullable: true, type: 'character varying', unique: true})
     email: string;
 
     @Column({name: 'r_nom', length: 35, type: 'character varying'})
@@ -42,6 +42,6 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     @Column({name: 'r_is_admin', default: false})
     is_admin: boolean;
 
-    @Column({name: 'r_telephone', length: 10, type: 'character varying', nullable: false, unique: false})
+    @Column({name: 'r_telephone', length: 10, type: 'character varying', nullable: false, unique: true})
     telephone: string;
 }

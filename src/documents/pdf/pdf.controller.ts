@@ -7,12 +7,11 @@ export class PdfController {
   constructor(private readonly pdfService: PdfService) {}
 
   @Public()
-@Post('facture/pdf')
-async generateFacture(@Body() body: any) {
-  const html = generateHtml(body);
-  
-  return this.pdfService.generatePdf(html, `facture_${Date.now()}.pdf`);
-}
+  @Post('facture/pdf')
+  async generateFacture(@Body() body: any) {
+    const html = generateHtml(body);
+    return this.pdfService.generatePdf(html, `facture_${Date.now()}.pdf`);
+  }
 
   
 }

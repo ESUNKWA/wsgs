@@ -29,7 +29,23 @@ export class BoutiqueService {
       
   }
   
-  async findAll(idStructure: string): Promise<Boutique[]> {
+  async findAll(): Promise<Boutique[]> {
+    // Récupérer tous les produits depuis la base de données
+    const structure = await this.boutiqueRepository.find({order: {'nom': 'ASC'}});
+
+    // Ajouter l'URL complète de l'image pour chaque produit
+    const structureWithLogoPath = structure.map((structure) => {
+    const logoPath = structure.logo ? `${structure.logo}` : null;
+      return {
+        ...structure,
+        imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
+      };
+    });
+
+    return structureWithLogoPath;
+  }
+
+  async findByStructure(idStructure: string): Promise<Boutique[]> {
     // Récupérer tous les produits depuis la base de données
     const structure = await this.boutiqueRepository.find({ where: {structure: {id: +idStructure}}, order: {'nom': 'ASC'}});
 

@@ -22,8 +22,14 @@ export class BoutiqueController {
   }
 
   @Get()
-  async findAll(@Query('structure') structure: string): Promise<DataRequest> {
-    const data = await this.boutiqueService.findAll(structure);
+  async findAll(): Promise<DataRequest> {
+    const data = await this.boutiqueService.findAll();
+    return this.responseService.success('Liste des boutiques', data);
+  }
+
+  @Get()
+  async findByStructure(@Query('structure') structure: string): Promise<DataRequest> {
+    const data = await this.boutiqueService.findByStructure(structure);
     return this.responseService.success('Liste des boutiques', data);
   }
 
