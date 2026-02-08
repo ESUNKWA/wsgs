@@ -75,18 +75,19 @@ export class ProduitService {
 
        // Si un fichier est fourni (image), on met à jour l'image du produit
        if (file) {
-
+        
+        
          // Supprimer l'ancienne image si elle existe
-         if (produitUpd.image) {
-          
-          const oldImagePath = produitUpd.image; // Construire le chemin complet de l'ancienne image
-          
+         if (produitUpd?.image) {
+            
+          const oldImagePath = produitUpd?.image; // Construire le chemin complet de l'ancienne image
+       
           // Vérifier si le fichier existe et le supprimer
-          fs.unlinkSync(oldImagePath);
+          //fs.unlinkSync(oldImagePath);
         }
         
         // Gérer le chemin de l'image ou le nom du fichier (peut-être avec une date ou un UUID pour l'unicité)
-        const imagePath = `uploads/produits/${file.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
+        const imagePath = `api/produits/${file?.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
         
         // Mettre à jour le champ image du produit
         produitUpd.image = imagePath;

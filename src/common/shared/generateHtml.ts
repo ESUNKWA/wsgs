@@ -4,10 +4,11 @@ import * as path from 'path';
 export function generateHtml(data: any): string {
   const templatePath = 'src/templates/facture.html'; //path.join(__dirname, 'facture.html');
   const template = fs.readFileSync(templatePath, 'utf8');
-
-  const lignes = data.produits.map(p => `
+  console.log(data);
+  
+  const lignes = data?.detail_vente?.map((p: { produit: any; quantite: number; prix: number; }) => `
     <tr>
-      <td>${p.nom}</td>
+      <td>${p.produit}</td>
       <td>${p.quantite}</td>
       <td>${p.prix.toLocaleString('fr-FR')}</td>
       <td>${(p.quantite * p.prix).toLocaleString('fr-FR')}</td>
@@ -18,6 +19,6 @@ export function generateHtml(data: any): string {
     .replace(/{{client}}/g, data.client)
     .replace(/{{date}}/g, new Date().toLocaleDateString('fr-FR'))
     .replace(/{{lignes}}/g, lignes)
-    .replace(/{{total}}/g, data.total.toLocaleString('fr-FR'));
+    .replace(/{{total}}/g, data.montant_total_apres_remise.toLocaleString('fr-FR'));
 }
 

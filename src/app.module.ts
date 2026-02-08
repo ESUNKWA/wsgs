@@ -28,8 +28,8 @@ import { PdfModule } from './documents/pdf/pdf.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: path.join(__dirname, '..', 'uploads'), // Remplace par le chemin correct
-      serveRoot: '/uploads', // Cette URL sera utilisée pour accéder aux fichiers
+      rootPath: path.join(__dirname, '..', 'public'), // Remplace par le chemin correct
+      serveRoot: '/', // Cette URL sera utilisée pour accéder aux fichiers
     }),
     ConfigModule.forRoot({
       isGlobal: true

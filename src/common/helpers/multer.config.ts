@@ -4,7 +4,7 @@ import { extname } from 'path';
 export const multerOptions = (destination: string) => ({
   storage: diskStorage({
     destination: (req, file, cb) => {
-      cb(null, './uploads'+destination); // Utilisation du paramètre pour définir le dossier
+      cb(null, './public'+destination); // Utilisation du paramètre pour définir le dossier
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

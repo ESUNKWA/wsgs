@@ -19,7 +19,7 @@ export class BoutiqueService {
       try {
         const data = this.boutiqueRepository.create({
           ...createBoutiqueDto,
-          logo: file ? 'uploads/logos/'+file.filename : null,  // Enregistre le nom du fichier de l'image
+          logo: file ? 'api/logos/'+file.filename : null,  // Enregistre le nom du fichier de l'image
         });
         return await this.boutiqueRepository.save(data);
   
@@ -30,14 +30,13 @@ export class BoutiqueService {
   }
   
   async findAll(): Promise<Boutique[]> {
-    // Récupérer tous les produits depuis la base de données
-    const structure = await this.boutiqueRepository.find({order: {'nom': 'ASC'}});
+    const boutique = await this.boutiqueRepository.find({order: {'nom': 'ASC'}});
 
     // Ajouter l'URL complète de l'image pour chaque produit
-    const structureWithLogoPath = structure.map((structure) => {
-    const logoPath = structure.logo ? `${structure.logo}` : null;
+    const structureWithLogoPath = boutique.map((boutique) => {
+    const logoPath = boutique.logo ? `${String(process.env.BASE_URL)}/${boutique.logo}` : null;
       return {
-        ...structure,
+        ...boutique,
         imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
       };
     });
@@ -46,12 +45,12 @@ export class BoutiqueService {
   }
 
   async findByStructure(idStructure: string): Promise<Boutique[]> {
-    // Récupérer tous les produits depuis la base de données
+   
     const structure = await this.boutiqueRepository.find({ where: {structure: {id: +idStructure}}, order: {'nom': 'ASC'}});
 
     // Ajouter l'URL complète de l'image pour chaque produit
     const structureWithLogoPath = structure.map((structure) => {
-    const logoPath = structure.logo ? `${structure.logo}` : null;
+    const logoPath = structure.logo ? `${String(process.env.BASE_URL)}/${structure.logo}` : null;
       return {
         ...structure,
         imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
@@ -88,11 +87,11 @@ export class BoutiqueService {
               const oldImagePath = structure.logo; // Construire le chemin complet de l'ancienne image
               
               // Vérifier si le fichier existe et le supprimer
-              fs.unlinkSync(oldImagePath);
+              //fs.unlinkSync(oldImagePath);
               }
             
             // Gérer le chemin de l'image ou le nom du fichier (peut-être avec une date ou un UUID pour l'unicité)
-            const imagePath = `uploads/logos/${file.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
+            const imagePath = `api/logos/${file.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
             
             // Mettre à jour le champ image du produit
             structure.logo = imagePath;

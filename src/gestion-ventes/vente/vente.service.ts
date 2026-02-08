@@ -9,6 +9,8 @@ import { DetailVente } from '../detail-vente/entities/detail-vente.entity';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { Produit } from 'src/config/produit/entities/produit.entity';
 import { Client } from '../client/entities/client.entity';
+import { formatVente } from 'src/common/helpers/formatVente';
+import { log } from 'console';
 
 @Injectable()
 export class VenteService {
@@ -22,7 +24,7 @@ export class VenteService {
       
     ){}
     
-  async create(createVenteDto: CreateVenteDto): Promise<Vente>  {
+  async create(createVenteDto: CreateVenteDto): Promise<any>  {
     try {
     
       return await this.dataSource.transaction(async (manager)=>{
@@ -77,17 +79,19 @@ export class VenteService {
 
           // 3. Ajuster le stock
           for (const produit of produits) {
-            
-                
-              const ligne = createVenteDto.detail_vente.find((l: any) => l.produit == produit.id);
-              
-              if (ligne) {
-                  produit.stock_disponible -= ligne.quantite; // ou - ligne.quantite selon le mouvement
-              }
-          }
-          await manager.save(Produit, produits);
 
-          return vente;
+            const ligne = createVenteDto.detail_vente.find((l: any) => l.produit == produit.id);
+            
+            if (ligne) {
+              produit.stock_disponible -= ligne.quantite; // ou - ligne.quantite selon le mouvement
+            }
+
+          }
+
+          await manager.save(Produit, produits);
+       
+          
+          return formatVente(createVenteDto);
 
         });
 
@@ -95,6 +99,7 @@ export class VenteService {
       throw new InternalServerErrorException(error.message);
     }
   }
+  
 
   async findAll(query: {boutique: number}): Promise<Vente[]> {
     
@@ -191,4 +196,5 @@ export class VenteService {
   remove(id: number) {
     return `This action removes a #${id} vente`;
   }
+
 }

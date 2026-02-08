@@ -39,7 +39,7 @@ export class PdfService {
 
       return {
         success: true,
-        path: `/api/pdfs/${fileName}`,
+        path: `${String(process.env.BASE_URL)}/api/pdfs/${fileName}`,
       };
 
     } catch (error) {
