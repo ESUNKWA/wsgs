@@ -24,4 +24,7 @@ export class CreateVenteDto {
 
     montant_total_apres_remise: number;
     remise: number;
+
+    date_vente: any;
+    caisier: any
 }

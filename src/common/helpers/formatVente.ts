@@ -17,5 +17,6 @@ export function formatVente(vente: any) {
     montant_total_apres_remise: vente.montant_total_apres_remise,
     statut: vente.statut,
     reference: vente.reference,
+    date_vente: vente.date_vente,
   };
 }

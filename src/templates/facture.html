@@ -98,31 +98,30 @@
 
   <!-- HEADER -->
   <div class="header">
-    <img src="{{logo}}" class="logo" alt="Logo Boutique">
+    <img src="{{logo_boutique}}" class="logo" alt="Logo Boutique">
     <div class="boutique-info">
-      <strong>{{boutique_nom}}</strong><br>
-      {{boutique_adresse}}<br>
-      Tél : {{boutique_telephone}}<br>
-      Email : {{boutique_email}}
+      <strong>{{nom_boutique}}</strong><br>
+      {{adresse_boutique}}<br>
+      Tél : {{phone_boutique}}<br>
+      Email : {{email_boutique}}
     </div>
   </div>
 
   <!-- TITRE -->
-  <div class="title">FACTURE</div>
+  <div class="title">FACTURE N°: <strong>{{reference}}</strong></div>
 
   <!-- INFOS CLIENT / FACTURE -->
   <div class="infos">
     <div class="box">
-      <strong>Client</strong><br>
+      <strong>Client</strong><br><br>
       Nom : {{client_nom}}<br>
       Téléphone : {{client_telephone}}<br>
       Adresse : {{client_adresse}}
     </div>
 
     <div class="box">
-      <strong>Détails facture</strong><br>
-      Numéro : {{numero_facture}}<br>
-      Date : {{date}}<br>
+      <strong>Détails facture</strong><br><br>
+      Date de vente: {{date}}<br>
       Caissier : {{caissier}}
     </div>
   </div>
@@ -145,8 +144,16 @@
   <!-- TOTAL -->
   <table class="total-box">
     <tr>
-      <td><strong>Total</strong></td>
+      <td><strong>Montant total</strong></td>
       <td class="text-right"><strong>{{total}} FCFA</strong></td>
+    </tr>
+    <tr>
+      <td style="color: red;"><strong>Remise</strong></td>
+      <td class="text-right" style="color: red;" ><strong>{{remise}} FCFA</strong></td>
+    </tr>
+    <tr>
+      <td style="color: green;"><strong>Net à payer</strong></td>
+      <td class="text-right" style="color: green;"><strong>{{net_a_payer}} FCFA</strong></td>
     </tr>
   </table>
 

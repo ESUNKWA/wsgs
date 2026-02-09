@@ -38,7 +38,7 @@ export class VenteService {
           createVenteDto.client = registerClient;
           //createVenteDto.montant_total_apres_remise = createVenteDto.montant_total - createVenteDto.remise
           const vente = manager.create(Vente, createVenteDto);
-        
+
           // Sauvegarder la vente
           const venteSauvegarde = await manager.save(vente);
           
@@ -89,9 +89,13 @@ export class VenteService {
           }
 
           await manager.save(Produit, produits);
-       
+      
           
-          return formatVente(createVenteDto);
+          createVenteDto.date_vente = venteSauvegarde?.created_at;
+          
+          const venteFormattee = formatVente(createVenteDto);
+
+          return venteFormattee;
 
         });
 

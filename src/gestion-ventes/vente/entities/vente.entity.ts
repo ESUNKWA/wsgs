@@ -14,7 +14,7 @@ export class Vente extends defaultDateGeneratorHelper {
     id: number;
 
     @Index()
-    @Column({name: 'r_reference', type: 'character varying', length: 20, unique: true})
+    @Column({name: 'r_reference', type: 'character varying', length: 20, unique: false})
     reference: string;
 
     @Column({
@@ -44,7 +44,7 @@ export class Vente extends defaultDateGeneratorHelper {
     @ManyToOne(type => Boutique, (boutique) => boutique.achat, {eager: false, nullable: false})
     boutique: Boutique;
 
-    @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: true, nullable: false})
+    @ManyToOne(type => Utilisateur, (user) => user.vente, {eager: false, nullable: false})
     user: Utilisateur;
 
     @OneToMany(
@@ -71,4 +71,7 @@ export class Vente extends defaultDateGeneratorHelper {
 
     @Column({name: 'r_montant_total_apres_remise', nullable: true, default:0, type: 'real'})
     montant_total_apres_remise: number;
+
+    @Column({name: 'r_recu_data', nullable: true, type: 'jsonb'})
+    recu_data: any
 }

@@ -18,7 +18,11 @@ export class AuthenticationService {
       }
       // Supprimer le mot de passe de l'utilisateur avant de renvoyer les données
       delete utilisateur.mot_de_passe;
-      
+
+      if (utilisateur.boutique) {
+        utilisateur.boutique.logo = utilisateur.boutique.logo ? `${process.env.BASE_URL}/${utilisateur.boutique.logo}` : null;
+      }
+
       const payload = { userId: utilisateur.id, email: utilisateur.email };
 
       const access_token = this.jwtService.sign(payload,
