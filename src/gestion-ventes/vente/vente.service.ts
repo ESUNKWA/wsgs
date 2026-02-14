@@ -30,13 +30,13 @@ export class VenteService {
       return await this.dataSource.transaction(async (manager)=>{
 
           //créer un nouvel client
-          const client = manager.create(Client, createVenteDto.client);
+          const client = manager.create(Client, createVenteDto.clientdata);
           const registerClient = await manager.save(client);
-
+          
           // Créer un nouvel vente
           createVenteDto.reference = ReferenceGeneratorHelper.generate('VNT'); // utilisation du helper
           createVenteDto.client = registerClient;
-          //createVenteDto.montant_total_apres_remise = createVenteDto.montant_total - createVenteDto.remise
+         
           const vente = manager.create(Vente, createVenteDto);
 
           // Sauvegarder la vente
@@ -94,6 +94,7 @@ export class VenteService {
           createVenteDto.date_vente = venteSauvegarde?.created_at;
           
           const venteFormattee = formatVente(createVenteDto);
+
 
           return venteFormattee;
 
