@@ -1,8 +1,9 @@
+import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Vente } from "src/gestion-ventes/vente/entities/vente.entity";
 import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_clients')
-export class Client {
+export class Client extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn({unsigned: true})
     id: number;
 
@@ -13,7 +14,7 @@ export class Client {
     prenoms: string;
 
     @Index()
-    @Column({ name: 'r_telephone', type: 'character varying', length: 35, nullable: true, unique: true})
+    @Column({ name: 'r_telephone', type: 'character varying', length: 35, nullable: true, unique: false})
     telephone: string;
 
     @Index()

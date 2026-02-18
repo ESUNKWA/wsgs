@@ -102,8 +102,9 @@
     <div class="boutique-info">
       <strong>{{nom_boutique}}</strong><br>
       {{adresse_boutique}}<br>
-      Tél : {{phone_boutique}}<br>
-      Email : {{email_boutique}}
+      {{phone_boutique}}<br>
+      {{email_boutique}}<br>
+      {{adresse_boutique}}
     </div>
   </div>
 
@@ -116,13 +117,13 @@
       <strong>Client</strong><br><br>
       Nom : {{client_nom}}<br>
       Téléphone : {{client_telephone}}<br>
-      Adresse : {{client_adresse}}
     </div>
 
     <div class="box">
       <strong>Détails facture</strong><br><br>
+      Référence: {{reference}}<br>
       Date de vente: {{date}}<br>
-      Caissier : {{caissier}}
+      Statut: {{statut}}
     </div>
   </div>
 
@@ -145,15 +146,15 @@
   <table class="total-box">
     <tr>
       <td><strong>Montant total</strong></td>
-      <td class="text-right"><strong>{{total}} FCFA</strong></td>
+      <td class="text-center"><strong>{{total}} FCFA</strong></td>
     </tr>
     <tr>
       <td style="color: red;"><strong>Remise</strong></td>
-      <td class="text-right" style="color: red;" ><strong>{{remise}} FCFA</strong></td>
+      <td class="text-center" style="color: red;" ><strong>{{remise}} FCFA</strong></td>
     </tr>
     <tr>
       <td style="color: green;"><strong>Net à payer</strong></td>
-      <td class="text-right" style="color: green;"><strong>{{net_a_payer}} FCFA</strong></td>
+      <td class="text-center" style="color: green;"><strong>{{net_a_payer}} FCFA</strong></td>
     </tr>
   </table>
 

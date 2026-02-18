@@ -105,14 +105,14 @@ export class UtilisateursService {
     return await this.utilisateurRepository.softDelete(id);
   }
 
-  async signin(email: string): Promise<Utilisateur> {
+  async signin(telephone: string): Promise<Utilisateur> {
     try {
       const data = await this.utilisateurRepository.findOne({
-        where: {email}, 
+        where: {telephone}, 
         relations: ['structure', 'structure.boutique', 'boutique']
       });
       if(!data){
-        throw new NotFoundException('Email ou mot de passe incorrecte');
+        throw new NotFoundException('Identifiant ou mot de passe incorrecte');
       }
       
       return data;

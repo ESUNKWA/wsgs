@@ -28,4 +28,5 @@ export class CreateVenteDto {
 
     date_vente: any;
     caisier: any
+    recu_data: any;
 }

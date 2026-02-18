@@ -4,7 +4,6 @@ import { CreateVenteDto } from './dto/create-vente.dto';
 import { UpdateVenteDto } from './dto/update-vente.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
-import { AuthGuard } from '@nestjs/passport';
 import { Public } from 'src/gestion-utilisateurs/authentication/auth/public.decorator';
 
 @Public()

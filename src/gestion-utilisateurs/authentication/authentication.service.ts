@@ -11,10 +11,10 @@ export class AuthenticationService {
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
    
-    const utilisateur: any = await this.utulisateurService.signin(createAuthenticationDto.email);
+    const utilisateur: any = await this.utulisateurService.signin(createAuthenticationDto.telephone);
     
       if (!utilisateur || !(await bcrypt.compare(createAuthenticationDto.mot_de_passe, utilisateur.mot_de_passe))) {
-        throw new NotFoundException('Email ou mot de passe incorrect');
+        throw new NotFoundException('Identifiant ou mot de passe incorrect');
       }
       // Supprimer le mot de passe de l'utilisateur avant de renvoyer les données
       delete utilisateur.mot_de_passe;

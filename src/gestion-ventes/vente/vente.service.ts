@@ -10,7 +10,6 @@ import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator
 import { Produit } from 'src/config/produit/entities/produit.entity';
 import { Client } from '../client/entities/client.entity';
 import { formatVente } from 'src/common/helpers/formatVente';
-import { log } from 'console';
 
 @Injectable()
 export class VenteService {
@@ -90,13 +89,18 @@ export class VenteService {
 
           await manager.save(Produit, produits);
       
-          
           createVenteDto.date_vente = venteSauvegarde?.created_at;
           
           const venteFormattee = formatVente(createVenteDto);
+          
+          //ajout donnée pour facture
+          await manager.update(
+            Vente,
+            venteSauvegarde.id,
+            { recu_data: venteFormattee }
+          );
 
-
-          return venteFormattee;
+          return {idVente: venteSauvegarde.id};
 
         });
 
