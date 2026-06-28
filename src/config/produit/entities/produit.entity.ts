@@ -108,4 +108,11 @@ export class Produit extends defaultDateGeneratorHelper {
 
     @Column({name: 'r_seuil_alert', type:'integer', default: 2, nullable: true})
     seuil_alert: number;
+
+    @Column({name: 'r_unite_mesure', type: 'character varying', length: 20, nullable: true, default: 'pièce'})
+    unite_mesure: string;
+
+    @Index()
+    @Column({name: 'r_code_barre', type: 'character varying', length: 100, nullable: true})
+    code_barre: string | null;
 }

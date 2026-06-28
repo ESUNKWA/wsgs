@@ -150,24 +150,27 @@ export class DashboardService {
 					  )
                   ),
                   'vendu_depuis_mois', (
-                  	SELECT json_agg(
-					    json_build_object(
-					        'id', tp.id,
-					        'nom', tp.r_nom,
-					        'image', tp.r_image,
-					        'stock_disponible', tp.r_stock_disponible,
-					        'date_creation', tp.created_at
-					    )
-					)
-					FROM t_produits tp
-					LEFT JOIN t_detail_ventes tdv ON tdv."produitId" = tp.id
-					LEFT JOIN t_ventes tv 
-					  ON tv.id = tdv."venteId"
-					 AND tv.created_at >= CURRENT_DATE - INTERVAL '1 month'
-					WHERE tp."boutiqueId" = $1
-					  AND tp.created_at <= CURRENT_DATE - INTERVAL '1 month'
-					GROUP BY tp.id
-					HAVING COUNT(tv.id) = 0
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', sub.id,
+                            'nom', sub.r_nom,
+                            'image', sub.r_image,
+                            'stock_disponible', sub.r_stock_disponible,
+                            'date_creation', sub.created_at
+                        )
+                    )
+                    FROM (
+                        SELECT tp.id, tp.r_nom, tp.r_image, tp.r_stock_disponible, tp.created_at
+                        FROM t_produits tp
+                        LEFT JOIN t_detail_ventes tdv ON tdv."produitId" = tp.id
+                        LEFT JOIN t_ventes tv
+                          ON tv.id = tdv."venteId"
+                         AND tv.created_at >= CURRENT_DATE - INTERVAL '1 month'
+                        WHERE tp."boutiqueId" = $1
+                          AND tp.created_at <= CURRENT_DATE - INTERVAL '1 month'
+                        GROUP BY tp.id
+                        HAVING COUNT(tv.id) = 0
+                    ) sub
                   )
               )
           )

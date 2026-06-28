@@ -47,4 +47,7 @@ export class Boutique {
 
     @OneToMany(() => Categorie, (categorie) => categorie.boutique)
     categorie: Categorie;
+
+    @Column({ name: 'r_gestion_caisse_activee', type: 'boolean', default: false })
+    gestion_caisse_activee: boolean;
 }

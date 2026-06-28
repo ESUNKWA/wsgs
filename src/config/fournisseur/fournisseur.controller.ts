@@ -24,9 +24,13 @@ export class FournisseurController {
   }
 
   @Get('boutique')
-  async findByBoutique(@Query('boutiqueId') boutique: number): Promise<DataRequest> {
-    const data = await this.fournisseurService.findByBoutique(boutique);
-    return this.responseService.success('Liste des fournisseurs', data);
+  async findByBoutique(
+    @Query('boutiqueId') boutique: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<any> {
+    const result = await this.fournisseurService.findByBoutique(boutique, Number(page) || 1, Number(limit) || 50);
+    return this.responseService.successPaginated('Liste des fournisseurs', result);
   }
 
   @Get(':id')

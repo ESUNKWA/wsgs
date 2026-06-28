@@ -1,12 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { VenteService } from './vente.service';
 import { CreateVenteDto } from './dto/create-vente.dto';
 import { UpdateVenteDto } from './dto/update-vente.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
-import { Public } from 'src/gestion-utilisateurs/authentication/auth/public.decorator';
 
-@Public()
 @Controller('vente')
 export class VenteController {
   constructor(private readonly venteService: VenteService, private responseService: ResponseService) {}
@@ -18,9 +16,9 @@ export class VenteController {
   }
 
   @Get()
-  async findAll(@Query() query: {boutique: number}) {
-    const data = await this.venteService.findAll(query);
-    return this.responseService.success('Liste des ventes', data);
+  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }) {
+    const result = await this.venteService.findAll(query);
+    return this.responseService.successPaginated('Liste des ventes', result);
   }
 
   @Get(':id')

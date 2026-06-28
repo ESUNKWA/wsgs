@@ -24,9 +24,15 @@ export class ProduitController {
 
   @Get()
   @HttpCode(200)
-  async findAll(@Query() query: {boutique: number}): Promise<DataRequest> {
-    const data = await this.produitService.findAll(query);
-    return this.responseService.success('Liste des produits', data);
+  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }): Promise<any> {
+    const result = await this.produitService.findAll(query);
+    return this.responseService.successPaginated('Liste des produits', result);
+  }
+
+  @Get('scan/:code')
+  async scan(@Param('code') code: string, @Query('boutique') boutique: string): Promise<DataRequest> {
+    const data = await this.produitService.findByCodeBarre(code, +boutique);
+    return this.responseService.success('Produit trouvé', data);
   }
 
   @Get(':id')

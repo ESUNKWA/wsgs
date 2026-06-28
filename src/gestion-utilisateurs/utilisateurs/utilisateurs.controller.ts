@@ -40,6 +40,21 @@ export class UtilisateursController {
     return this.responseService.success('Modification effectués avec succès', data);
   }
 
+  @Patch(':id/mot-de-passe')
+  async changePassword(
+    @Param('id') id: string,
+    @Body() body: { ancien_mot_de_passe: string; nouveau_mot_de_passe: string },
+  ): Promise<DataRequest> {
+    await this.utilisateursService.changePassword(+id, body.ancien_mot_de_passe, body.nouveau_mot_de_passe);
+    return this.responseService.success('Mot de passe modifié avec succès', null);
+  }
+
+  @Patch(':id/reset-mot-de-passe')
+  async resetPassword(@Param('id') id: string): Promise<DataRequest> {
+    await this.utilisateursService.resetPassword(+id);
+    return this.responseService.success('Mot de passe réinitialisé avec succès', null);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return await this.utilisateursService.remove(+id);

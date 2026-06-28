@@ -20,6 +20,10 @@ import { DetailVenteModule } from './gestion-ventes/detail-vente/detail-vente.mo
 import { ClientModule } from './gestion-ventes/client/client.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { OllamaModule } from './ollama/ollama.module';
+import { DevisModule } from './gestion-ventes/devis/devis.module';
+import { CommandeFournisseurModule } from './gestion-achats/commande-fournisseur/commande-fournisseur.module';
+import { CommandeClientModule } from './gestion-ventes/commande-client/commande-client.module';
+import { SessionCaisseModule } from './gestion-caisse/session-caisse.module';
 import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard'
@@ -60,7 +64,11 @@ import { PdfModule } from './documents/pdf/pdf.module';
     ClientModule,
     DashboardModule,
     OllamaModule,
-    PdfModule
+    PdfModule,
+    DevisModule,
+    CommandeFournisseurModule,
+    CommandeClientModule,
+    SessionCaisseModule,
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService, {

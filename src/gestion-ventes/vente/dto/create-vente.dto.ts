@@ -1,4 +1,5 @@
 import { IsNotEmpty } from "class-validator";
+import { ModePaiement } from "src/gestion-achats/achat/entities/achat.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Client } from "src/gestion-ventes/client/entities/client.entity";
 import { DetailVente } from "src/gestion-ventes/detail-vente/entities/detail-vente.entity";
@@ -25,8 +26,11 @@ export class CreateVenteDto {
 
     montant_total_apres_remise: number;
     remise: number;
+    mode_paiement: ModePaiement;
+    details_paiement: any;
 
+    user: any;
     date_vente: any;
-    caisier: any
+    caisier: any;
     recu_data: any;
 }

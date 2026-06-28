@@ -5,6 +5,7 @@ import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entit
 import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
 import { Client } from "src/gestion-ventes/client/entities/client.entity";
 import { DetailVente } from "src/gestion-ventes/detail-vente/entities/detail-vente.entity";
+import { SessionCaisse } from "src/gestion-caisse/entities/session-caisse.entity";
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('t_ventes')
@@ -20,7 +21,7 @@ export class Vente extends defaultDateGeneratorHelper {
     @Column({
         name: 'r_mode_paiement',
         type: "enum",
-        enum: ["espece", "carte", "mobile_money"],
+        enum: ["espece", "carte", "mobile_money", "credit", "mixte"],
         default: "espece"}
     )
     mode_paiement: ModePaiement;
@@ -71,6 +72,12 @@ export class Vente extends defaultDateGeneratorHelper {
 
     @Column({name: 'r_montant_total_apres_remise', nullable: true, default:0, type: 'real'})
     montant_total_apres_remise: number;
+
+    @ManyToOne(() => SessionCaisse, { nullable: true, eager: false })
+    session_caisse: SessionCaisse | null;
+
+    @Column({name: 'r_details_paiement', nullable: true, type: 'jsonb'})
+    details_paiement: any;
 
     @Column({name: 'r_recu_data', nullable: true, type: 'jsonb'})
     recu_data: any

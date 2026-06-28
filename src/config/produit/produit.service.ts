@@ -27,29 +27,31 @@ export class ProduitService {
     }
   }
 
-  async findAll(query: {boutique: number}): Promise<Produit[]> {
+  async findAll(query: { boutique: number; page?: number; limit?: number }) {
     try {
       const { boutique } = query;
-     
       if (isNaN(boutique)) {
         throw new BadRequestException('Veuillez préciser la boutique');
       }
-      // Récupérer tous les produits depuis la base de données
-      const produits = await this.produitRepository.find({where: {boutique: {id: +boutique}}, order: {nom: 'ASC'}});
+      const page = Number(query.page) || 1;
+      const limit = Number(query.limit) || 50;
+      const skip = (page - 1) * limit;
 
-      // Ajouter l'URL complète de l'image pour chaque produit
-      const produitsWithImagePath = produits.map((produit) => {
-      const imagePath = produit.image;
-        return {
-          ...produit,
-          imageUrl: `${String(process.env.BASE_URL)}/${imagePath}`,  // Ajouter le champ imageUrl avec l'URL complète
-        };
+      const [produits, total] = await this.produitRepository.findAndCount({
+        where: { boutique: { id: +boutique } },
+        order: { nom: 'ASC' },
+        skip,
+        take: limit,
       });
 
-      return produitsWithImagePath;
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
+      const items = produits.map((produit) => ({
+        ...produit,
+        imageUrl: `${String(process.env.BASE_URL)}/${produit.image}`,
+      }));
 
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    } catch (error: any) {
+      throw new InternalServerErrorException(error.message);
     }
   }
 
@@ -97,6 +99,14 @@ export class ProduitService {
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
+  }
+
+  async findByCodeBarre(code: string, boutiqueId: number): Promise<Produit> {
+    const produit = await this.produitRepository.findOne({
+      where: { code_barre: code, boutique: { id: boutiqueId } },
+    });
+    if (!produit) throw new NotFoundException('Aucun produit trouvé pour ce code-barres');
+    return produit;
   }
 
   async remove(id: number) {

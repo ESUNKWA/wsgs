@@ -14,4 +14,6 @@ export class CreateBoutiqueDto {
 
     @IsNotEmpty({message: 'Veuillez sélectionner la structure'})
     structure: Structure;
+
+    gestion_caisse_activee: boolean;
 }

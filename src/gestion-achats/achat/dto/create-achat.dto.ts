@@ -21,4 +21,6 @@ export class CreateAchatDto {
 
     @IsNotEmpty({message: 'Aucune boutique reconnue'})
     boutique: Boutique[];
+
+    user: any;
 }

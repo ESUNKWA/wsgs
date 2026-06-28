@@ -15,9 +15,18 @@ export class ClientService {
     return data;
   }
 
-  async findAll(): Promise<Client[]> {
-    const data = await this.clientRepository.find();
-    return data;
+  async findAll(query?: { boutique?: number; page?: number; limit?: number }) {
+    const page = Number(query?.page) || 1;
+    const limit = Number(query?.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.clientRepository.findAndCount({
+      order: { nom: 'ASC' },
+      skip,
+      take: limit,
+    });
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   findOne(id: number) {

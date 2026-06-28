@@ -1,34 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { HistoriqueStockService } from './historique-stock.service';
-import { CreateHistoriqueStockDto } from './dto/create-historique-stock.dto';
-import { UpdateHistoriqueStockDto } from './dto/update-historique-stock.dto';
+import { ResponseService } from 'src/services/response/response.service';
 
-@Controller('historique-stock')
+@Controller('mouvement-stock')
 export class HistoriqueStockController {
-  constructor(private readonly historiqueStockService: HistoriqueStockService) {}
-
-  @Post()
-  create(@Body() createHistoriqueStockDto: CreateHistoriqueStockDto) {
-    return this.historiqueStockService.create(createHistoriqueStockDto);
-  }
+  constructor(
+    private readonly historiqueStockService: HistoriqueStockService,
+    private readonly responseService: ResponseService,
+  ) {}
 
   @Get()
-  findAll() {
-    return this.historiqueStockService.findAll();
+  async findAll(
+    @Query() query: { boutique?: number; produit?: number; page?: number; limit?: number },
+  ) {
+    const result = await this.historiqueStockService.findAll(query);
+    return this.responseService.successPaginated('Historique des mouvements de stock', result);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.historiqueStockService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateHistoriqueStockDto: UpdateHistoriqueStockDto) {
-    return this.historiqueStockService.update(+id, updateHistoriqueStockDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.historiqueStockService.remove(+id);
+  @Get('produit/:id')
+  async findByProduit(@Param('id') id: string) {
+    const data = await this.historiqueStockService.findByProduit(+id);
+    return this.responseService.success('Mouvements du produit', data);
   }
 }

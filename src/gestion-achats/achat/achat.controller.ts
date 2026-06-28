@@ -19,10 +19,9 @@ export class AchatController {
   }
 
   @Get()
-  async findAll(@Query() query: {boutique: number}): Promise<DataRequest> {
-    const data = await this.achatService.findAll(query);
-    return this.responseService.success('Liste des achat', data);
-
+  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }): Promise<any> {
+    const result = await this.achatService.findAll(query);
+    return this.responseService.successPaginated('Liste des achats', result);
   }
 
   @Get(':id')

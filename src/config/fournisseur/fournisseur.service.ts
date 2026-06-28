@@ -26,8 +26,15 @@ export class FournisseurService {
     return await this.fournisseurRepository.find({order: {nom: 'ASC'}});
   }
 
-  async findByBoutique(id: number): Promise<Fournisseur[]> {
-    return await this.fournisseurRepository.find({where:{boutique: {id}}, order: {nom: 'ASC'}});
+  async findByBoutique(id: number, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await this.fournisseurRepository.findAndCount({
+      where: { boutique: { id } },
+      order: { nom: 'ASC' },
+      skip,
+      take: limit,
+    });
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number): Promise<Fournisseur> {
