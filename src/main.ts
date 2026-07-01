@@ -23,7 +23,7 @@ async function bootstrap() {
     origin: 'https://neurostock.ekwatech.com',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
     credentials: true,
-    allowedHeaders: 'Content-Type, Authorization'
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-structure-id'],
   });
 
   const config = new DocumentBuilder()
