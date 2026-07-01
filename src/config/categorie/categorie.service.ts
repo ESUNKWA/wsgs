@@ -1,26 +1,26 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
-import { Repository } from 'typeorm';
 import { Categorie } from './entities/categorie.entity';
-import { InjectRepository } from '@nestjs/typeorm';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
+import * as XLSX from 'xlsx';
 
 @Injectable()
 export class CategorieService {
 
-  constructor( 
-    @InjectRepository(Categorie)
-    private categorieRepository: Repository<Categorie> ){}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get categorieRepository() {
+    return this.tenantContext.getDataSource().getRepository(Categorie);
+  }
 
   async create(createCategorieDto: CreateCategorieDto): Promise<Categorie> {
     try {
-      const data = await this.categorieRepository.save(createCategorieDto);
-      return data;
-    } catch (error) {
+      return await this.categorieRepository.save(createCategorieDto);
+    } catch (error: any) {
       if (error.code === '23505') {
-        // Vérifier le message pour savoir quelle contrainte est violée
-        if (error.detail.includes('nom')) {
-          throw new ConflictException('Cet nom est déjà utilisé');
+        if (error.detail?.includes('nom')) {
+          throw new ConflictException('Ce nom est déjà utilisé');
         }
         throw new ConflictException('Cette donnée existe déjà en base');
       }
@@ -29,44 +29,73 @@ export class CategorieService {
   }
 
   async findAll(): Promise<Categorie[]> {
-     const data = await this.categorieRepository.find({order: {'nom': 'ASC'}}) ;
-     return data;
+    return await this.categorieRepository.find({ order: { nom: 'ASC' } });
   }
 
   async findByBoutik(id: number): Promise<Categorie[]> {
-    
-     const data = await this.categorieRepository.find({where:{boutique: {id}}, order: {'nom': 'ASC'}}) ;
-     return data;
+    return await this.categorieRepository.find({ where: { boutique: { id } }, order: { nom: 'ASC' } });
   }
 
   async findOne(id: number): Promise<Partial<Categorie>> {
-    try {
-      const categorie = await this.categorieRepository.findOne({where: {
-        id: id
-      }});
-
-      if (!categorie) {
-        throw new NotFoundException('Catégorie inexistante');
-      }
-
-      return categorie;
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
-    
+    const categorie = await this.categorieRepository.findOne({ where: { id } });
+    if (!categorie) throw new NotFoundException('Catégorie inexistante');
+    return categorie;
   }
 
   async update(id: number, updateCategorieDto: UpdateCategorieDto): Promise<Partial<Categorie>> {
-    
-    const categorie = await this.categorieRepository.preload({id, ...updateCategorieDto});
-    if (!categorie) {
-      throw new NotFoundException('Catégorie inexistante');
-    }
-
+    const categorie = await this.categorieRepository.preload({ id, ...updateCategorieDto });
+    if (!categorie) throw new NotFoundException('Catégorie inexistante');
     return await this.categorieRepository.save(categorie);
   }
 
   async remove(id: number) {
     return await this.categorieRepository.softDelete(id);
+  }
+
+  async importFromFile(
+    file: Express.Multer.File,
+    boutiqueId: number,
+  ): Promise<{ created: number; skipped: number; errors: string[] }> {
+    if (!boutiqueId || isNaN(boutiqueId)) {
+      throw new BadRequestException('Veuillez préciser la boutique');
+    }
+
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rows.length) throw new BadRequestException('Le fichier est vide');
+
+    let created = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const nom = String(row['nom'] ?? row['Nom'] ?? '').trim();
+
+      if (!nom) {
+        errors.push(`Ligne ${i + 2} : le champ "nom" est obligatoire`);
+        skipped++;
+        continue;
+      }
+
+      try {
+        const entity = this.categorieRepository.create({ nom });
+        (entity as any).description = String(row['description'] ?? row['Description'] ?? '').trim() || null;
+        (entity as any).boutique = { id: boutiqueId };
+        await this.categorieRepository.save(entity);
+        created++;
+      } catch (error: any) {
+        if (error.code === '23505') {
+          skipped++;
+        } else {
+          errors.push(`Ligne ${i + 2} (${nom}) : ${error.message}`);
+          skipped++;
+        }
+      }
+    }
+
+    return { created, skipped, errors };
   }
 }

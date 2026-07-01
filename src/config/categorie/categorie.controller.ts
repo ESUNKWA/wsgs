@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Res, HttpCode, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { CategorieService } from './categorie.service';
 import { CreateCategorieDto } from './dto/create-categorie.dto';
 import { UpdateCategorieDto } from './dto/update-categorie.dto';
 import { ResponseService } from 'src/services/response/response.service';
 import { DataRequest } from 'src/interface/DataRequest';
-import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { importMulterOptions } from 'src/common/helpers/import-multer.config';
 
 @Controller('categorie')
 
@@ -48,5 +49,19 @@ export class CategorieController {
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return await this.categorieService.remove(+id);
+  }
+
+  @Post('import')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', importMulterOptions))
+  async importFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('boutique') boutique: string,
+  ): Promise<DataRequest> {
+    const result = await this.categorieService.importFromFile(file, +boutique);
+    return this.responseService.success(
+      `Import terminé : ${result.created} créée(s), ${result.skipped} ignorée(s)`,
+      result,
+    );
   }
 }

@@ -1,138 +1,95 @@
-import { Injectable, InternalServerErrorException, NotAcceptableException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateStructureDto } from './dto/create-structure.dto';
 import { UpdateStructureDto } from './dto/update-structure.dto';
 import { Structure } from './entities/structure.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { TenantService } from 'src/tenant/tenant.service';
+import { Boutique } from '../boutique/entities/boutique.entity';
+import { buildTenantFilePath, buildTenantDir } from 'src/common/helpers/tenant-file.helper';
 import * as fs from 'fs';
-import { UtilisateursService } from 'src/gestion-utilisateurs/utilisateurs/utilisateurs.service';
-import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
-import { ProfilsService } from 'src/gestion-utilisateurs/profils/profils.service';
-import * as bcrypt from 'bcrypt';
+import * as path from 'path';
 
 @Injectable()
 export class StructureService {
 
-  constructor( 
-      @InjectRepository(Structure)
-      private structureRepository: Repository<Structure>,
+  constructor(
+    @InjectRepository(Structure)
+    private structureRepository: Repository<Structure>,
+    private readonly tenantService: TenantService,
+  ) {}
 
-      private userService: UtilisateursService,
-      private profileService: ProfilsService,
-      private readonly dataSource: DataSource
-    ){}
-
-  async create(createStructureDto: CreateStructureDto, file?: Express.Multer.File): Promise<any> {
-    
+  async create(createStructureDto: CreateStructureDto, file?: Express.Multer.File): Promise<Structure> {
     try {
+      // Save first to get the auto-generated ID
+      const structure = await this.structureRepository.save(
+        this.structureRepository.create({ ...createStructureDto, logo: null }),
+      );
 
-      //Récupération des profils
-      const profils = await this.profileService.findAll();
-      const profilResponsable = profils.find(p => p.code === 'responsable_structure');
-
-      if (!profilResponsable) {
-        throw new NotAcceptableException('Profil du reponsable non trouvé');
+      if (file) {
+        // Move the file from the temp location (public/logos/) into the tenant folder
+        const tenantDir = buildTenantDir(structure.id, 'logos');
+        fs.mkdirSync(tenantDir, { recursive: true });
+        const dest = path.join(tenantDir, file.filename);
+        fs.renameSync(file.path, dest);
+        structure.logo = buildTenantFilePath(structure.id, 'logos', file.filename);
+        await this.structureRepository.save(structure);
       }
 
-      createStructureDto.responsable.profil = profilResponsable;
-      const hashPassword = await bcrypt.hash(createStructureDto.responsable.mot_de_passe, 10);
-      createStructureDto.responsable.mot_de_passe = hashPassword;
-      return await this.dataSource.transaction(async (manager)=>{
-
-        //créer un nouvel utilisateurs
-        const user = manager.create(Utilisateur, createStructureDto.responsable);
-        const registerClient = await manager.save(user);
-
-        
-        const structure = manager.create(Structure,{
-          ...createStructureDto,
-          logo: file ? 'api/logos/'+file.filename : null,
-          responsable: user  // Enregistre le nom du fichier de l'image
-        });
-        const saveStructure = await manager.save(structure);
-        
-        return structure;
-      });
-
-
-      /* const saveUser = await this.userService.create(createStructureDto.responsable);
-
-      const structure = this.structureRepository.create({
-        ...createStructureDto,
-        logo: file ? 'uploads/logos/'+file.filename : null,  // Enregistre le nom du fichier de l'image
-      });
-      const saveStructure = await this.structureRepository.save(structure);
-
-      return saveStructure */
-
-    } catch (error) {
+      return structure;
+    } catch (error: any) {
       throw new InternalServerErrorException(error.message);
     }
-
-
-    
   }
 
-  async findAll(): Promise<Structure[]> {
-    // Récupérer tous les produits depuis la base de données
-    const structure = await this.structureRepository.find({order: {'nom': 'ASC'}, relations: ['responsable']});
+  async findAll(profil?: string, structureId?: number): Promise<any[]> {
+    const where = profil === 'super_admin' ? {} : { id: structureId };
 
-    // Ajouter l'URL complète de l'image pour chaque produit
-    const structureWithLogoPath = structure.map((structure) => {
-    const logoPath = structure.logo ? `${String(process.env.BASE_URL)}/${structure.logo}` : null;
-      return {
-        ...structure,
-        imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
-      };
+    const structures = await this.structureRepository.find({
+      where,
+      order: { nom: 'ASC' },
+      relations: ['responsable'],
     });
 
-    return structureWithLogoPath;
+    return Promise.all(
+      structures.map(async (s) => {
+        let boutiques: Boutique[] = [];
+        try {
+          const ds = await this.tenantService.getDataSource(s.id);
+          boutiques = await ds.getRepository(Boutique).find({ order: { nom: 'ASC' } });
+        } catch {
+          // tenant non provisionné → boutiques vide
+        }
+        return {
+          ...s,
+          imageUrl: s.logo ? `${String(process.env.BASE_URL)}/${s.logo}` : null,
+          boutiques,
+        };
+      }),
+    );
   }
 
   async findOne(id: number): Promise<Structure> {
-   const data = await this.structureRepository.findOne({where: {
-         id: id
-       }});
-       
-       if(!data){
-         throw new NotFoundException('Produit inexistant');
-       }
-       return data;
+    const data = await this.structureRepository.findOne({ where: { id } });
+    if (!data) throw new NotFoundException('Structure inexistante');
+    return data;
   }
 
   async update(id: number, updateStructureDto: UpdateStructureDto, file?: Express.Multer.File) {
     try {
+      delete (updateStructureDto as any).responsable;
+      const structure = await this.structureRepository.preload({ id, ...updateStructureDto });
+      if (!structure) throw new NotFoundException('Structure inexistante');
 
-     
-          delete updateStructureDto.responsable;
-          const structure = await this.structureRepository.preload({id, ...updateStructureDto});
-          if(!structure){
-            throw new NotFoundException('Structure inexistant');
-          }
-          
-           // Si un fichier est fourni (image), on met à jour l'image du produit
-          if (file) {
-    
-             // Supprimer l'ancienne image si elle existe
-             if (structure.logo) {
-              
-              const oldImagePath = structure.logo; // Construire le chemin complet de l'ancienne image
-              
-              // Vérifier si le fichier existe et le supprimer
-              //fs.unlinkSync(oldImagePath);
-              }
-            
-            // Gérer le chemin de l'image ou le nom du fichier (peut-être avec une date ou un UUID pour l'unicité)
-            const imagePath = `api/logos/${file.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
-            
-            // Mettre à jour le champ image du produit
-            structure.logo = imagePath;
-          }
-    
-          return await this.structureRepository.save(structure);
-        } catch (error) {
-          throw new InternalServerErrorException(error.message);
-        }
+      if (file) {
+        // :id is known → file was already saved to public/tenants/{id}/logos/ by multer
+        structure.logo = buildTenantFilePath(id, 'logos', file.filename);
+      }
+
+      return await this.structureRepository.save(structure);
+    } catch (error: any) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   remove(id: number) {

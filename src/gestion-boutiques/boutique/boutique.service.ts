@@ -1,109 +1,93 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateBoutiqueDto } from './dto/create-boutique.dto';
 import { UpdateBoutiqueDto } from './dto/update-boutique.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Boutique } from './entities/boutique.entity';
-import { Repository } from 'typeorm';
-import * as fs from 'fs';
-import { Structure } from '../structure/entities/structure.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { TenantService } from 'src/tenant/tenant.service';
+import { DataSource } from 'typeorm';
+import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
 
 @Injectable()
 export class BoutiqueService {
 
-  constructor( 
-        @InjectRepository(Boutique)
-        private boutiqueRepository: Repository<Boutique> ){}
-        
-  async create(createBoutiqueDto: CreateBoutiqueDto, file?: Express.Multer.File): Promise<Boutique> {
-      
-      try {
-        const data = this.boutiqueRepository.create({
-          ...createBoutiqueDto,
-          logo: file ? 'api/logos/'+file.filename : null,  // Enregistre le nom du fichier de l'image
-        });
-        return await this.boutiqueRepository.save(data);
-  
-      } catch (error) {
-        throw new InternalServerErrorException(error.message);
-      }
-      
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly tenantService: TenantService,
+  ) {}
+
+  private async resolveDs(structureId?: number): Promise<DataSource> {
+    if (this.tenantContext.hasContext()) return this.tenantContext.getDataSource();
+    if (structureId) return this.tenantService.getDataSource(structureId);
+    throw new InternalServerErrorException('Structure requise pour accéder aux boutiques.');
   }
-  
-  async findAll(): Promise<Boutique[]> {
-    const boutique = await this.boutiqueRepository.find({order: {'nom': 'ASC'}});
 
-    // Ajouter l'URL complète de l'image pour chaque produit
-    const structureWithLogoPath = boutique.map((boutique) => {
-    const logoPath = boutique.logo ? `${String(process.env.BASE_URL)}/${boutique.logo}` : null;
-      return {
-        ...boutique,
-        imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
-      };
-    });
+  async create(createBoutiqueDto: CreateBoutiqueDto, file?: Express.Multer.File): Promise<Boutique> {
+    try {
+      const { structure, ...rest } = createBoutiqueDto as any;
+      const dtoStructureId: number | undefined =
+        typeof structure === 'object' ? structure?.id : +structure || undefined;
+      const structureId =
+        dtoStructureId ?? (this.tenantContext.hasContext() ? (this.tenantContext.getStructureId() ?? undefined) : undefined);
+      const ds = await this.resolveDs(structureId);
+      const repo = ds.getRepository(Boutique);
+      const data = repo.create({
+        ...rest,
+        structure_id: structureId,
+        logo: file ? buildTenantFilePath(structureId ?? null, 'logos', file.filename) : null,
+      });
+      return await repo.save(data) as any;
+    } catch (error: any) {
+      throw new InternalServerErrorException(error.message);
+    }
+  }
 
-    return structureWithLogoPath;
+  async findAll(structureId?: number): Promise<Boutique[]> {
+    const ds = await this.resolveDs(structureId);
+    const boutiques = await ds.getRepository(Boutique).find({ order: { nom: 'ASC' } });
+    return boutiques.map((b) => ({
+      ...b,
+      imageUrl: b.logo ? `${String(process.env.BASE_URL)}/${b.logo}` : null,
+    }));
   }
 
   async findByStructure(idStructure: string): Promise<Boutique[]> {
-   
-    const structure = await this.boutiqueRepository.find({ where: {structure: {id: +idStructure}}, order: {'nom': 'ASC'}});
-
-    // Ajouter l'URL complète de l'image pour chaque produit
-    const structureWithLogoPath = structure.map((structure) => {
-    const logoPath = structure.logo ? `${String(process.env.BASE_URL)}/${structure.logo}` : null;
-      return {
-        ...structure,
-        imageUrl: logoPath,  // Ajouter le champ imageUrl avec l'URL complète
-      };
+    const id = parseInt(idStructure, 10);
+    if (isNaN(id)) throw new BadRequestException('Identifiant de structure invalide');
+    const ds = await this.resolveDs(id);
+    const boutiques = await ds.getRepository(Boutique).find({
+      where: { structure_id: id },
+      order: { nom: 'ASC' },
     });
+    return boutiques.map((b) => ({
+      ...b,
+      imageUrl: b.logo ? `${String(process.env.BASE_URL)}/${b.logo}` : null,
+    }));
+  }
 
-    return structureWithLogoPath;
+  async findOne(id: number, structureId?: number): Promise<Boutique> {
+    const ds = await this.resolveDs(structureId);
+    const data = await ds.getRepository(Boutique).findOne({ where: { id } });
+    if (!data) throw new NotFoundException('Boutique inexistante');
+    return data;
   }
-  
-  async findOne(id: number): Promise<Boutique> {
-    const data = await this.boutiqueRepository.findOne({where: {
-          id: id
-        }});
-        
-        if(!data){
-          throw new NotFoundException('Produit inexistant');
-        }
-        return data;
-  }
-  
-  async update(id: number, updateBoutiqueDto: UpdateBoutiqueDto, file?: Express.Multer.File) {
+
+  async update(id: number, updateBoutiqueDto: UpdateBoutiqueDto, file?: Express.Multer.File, structureId?: number) {
     try {
-          const structure = await this.boutiqueRepository.preload({id, ...updateBoutiqueDto});
-          if(!structure){
-            throw new NotFoundException('Structure inexistant');
-          }
-          
-            // Si un fichier est fourni (image), on met à jour l'image du produit
-          if (file) {
-    
-              // Supprimer l'ancienne image si elle existe
-              if (structure.logo) {
-              
-              const oldImagePath = structure.logo; // Construire le chemin complet de l'ancienne image
-              
-              // Vérifier si le fichier existe et le supprimer
-              //fs.unlinkSync(oldImagePath);
-              }
-            
-            // Gérer le chemin de l'image ou le nom du fichier (peut-être avec une date ou un UUID pour l'unicité)
-            const imagePath = `api/logos/${file.filename}`; // Assure-toi que le fichier est dans un dossier public comme 'uploads/produits'
-            
-            // Mettre à jour le champ image du produit
-            structure.logo = imagePath;
-          }
-    
-          return await this.boutiqueRepository.save(structure);
-        } catch (error) {
-          throw new InternalServerErrorException(error.message);
-        }
+      const ds = await this.resolveDs(structureId);
+      const repo = ds.getRepository(Boutique);
+      const boutique = await repo.preload({ id, ...updateBoutiqueDto });
+      if (!boutique) throw new NotFoundException('Boutique inexistante');
+      if (file) {
+        const sid = structureId ?? (this.tenantContext.hasContext() ? this.tenantContext.getStructureId() : null);
+        boutique.logo = buildTenantFilePath(sid, 'logos', file.filename);
+      }
+      return await repo.save(boutique);
+    } catch (error: any) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
-  
+
   remove(id: number) {
-    return `This action removes a #${id} structure`;
+    return `This action removes a #${id} boutique`;
   }
 }

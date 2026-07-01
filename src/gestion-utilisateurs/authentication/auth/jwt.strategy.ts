@@ -14,13 +14,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    try {
-      // On peut directement retourner le payload, il contient déjà les données nécessaires
-      return { userId: payload.userId, email: payload.email };
-    } catch (error) {
-      console.error('Erreur de validation du token:', error.message);  // Log d'erreur
-      throw new UnauthorizedException('Token expiré ou invalide');
-    }
+    return {
+      userId: payload.userId,
+      telephone: payload.telephone ?? null,
+      email: payload.email,
+      profil: payload.profil,
+      structureId: payload.structureId ?? null,
+      is_super_admin: payload.is_super_admin ?? false,
+    };
   }
   
 

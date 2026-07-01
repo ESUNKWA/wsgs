@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateVenteDto } from './dto/create-vente.dto';
-import { DataSource, In, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+import { In } from 'typeorm';
 import { HistoriqueStock } from 'src/gestion-achats/historique-stock/entities/historique-stock.entity';
 import { Vente } from './entities/vente.entity';
 import { DetailVente } from '../detail-vente/entities/detail-vente.entity';
@@ -11,20 +10,21 @@ import { Client } from '../client/entities/client.entity';
 import { formatVente } from 'src/common/helpers/formatVente';
 import { SessionCaisse } from 'src/gestion-caisse/entities/session-caisse.entity';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class VenteService {
 
-  constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Vente) private venteRepository: Repository<Vente>,
-  ) {}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
+  private get venteRepository() { return this.dataSource.getRepository(Vente); }
 
   async create(createVenteDto: CreateVenteDto): Promise<any> {
     try {
       return await this.dataSource.transaction(async (manager) => {
 
-        // Réutilise le client existant par téléphone, sinon en crée un nouveau
         let registerClient: Client;
         if (createVenteDto.clientdata?.telephone) {
           const existing = await manager.findOne(Client, {
@@ -38,16 +38,23 @@ export class VenteService {
         createVenteDto.reference = ReferenceGeneratorHelper.generate('VNT');
         createVenteDto.client = registerClient;
 
-        // Gestion caisse : session par caissier (option B)
         const boutiqueId = (createVenteDto.boutique as any)?.id ?? createVenteDto.boutique;
-        const userId = (createVenteDto.user as any)?.id ?? createVenteDto.user;
+
+        // Resolve the caissier/utilisateur by telephone (tenant-local id, not master id)
+        const telephone = String((createVenteDto as any).user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+          if (!tenantUser) throw new BadRequestException(`Utilisateur introuvable (tél: ${telephone})`);
+        }
+
         const boutique = await manager.findOne(Boutique, { where: { id: boutiqueId } });
         let sessionActive: SessionCaisse | null = null;
         if (boutique?.gestion_caisse_activee) {
           sessionActive = await manager.findOne(SessionCaisse, {
             where: {
               boutique: { id: boutiqueId },
-              caissier: { id: userId },
+              caissier: tenantUser ? { id: tenantUser.id } : undefined,
               statut: 'ouverte',
             },
           });
@@ -60,6 +67,7 @@ export class VenteService {
 
         const vente = manager.create(Vente, {
           ...createVenteDto,
+          user: tenantUser ?? undefined,
           session_caisse: sessionActive,
         } as any);
         const venteSauvegarde = await manager.save(vente);
@@ -74,7 +82,6 @@ export class VenteService {
         );
         await manager.save(lignes);
 
-        // Charger les produits avant modification du stock pour capturer stock_avant
         const produitsIds = createVenteDto.detail_vente.map((l: any) => l.produit);
         const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
@@ -89,7 +96,7 @@ export class VenteService {
             vente,
             stock_avant,
             stock_apres: stock_avant - ligne.quantite,
-            utilisateur: userId ? { id: userId } : undefined,
+            utilisateur: tenantUser ?? undefined,
           });
         });
         await manager.save(lignesHistorik);
@@ -141,6 +148,11 @@ export class VenteService {
   async update(id: number, updateVenteDto: any): Promise<Vente> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const telephone = String(updateVenteDto.user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+        }
 
         if (updateVenteDto.client?.id) {
           const client = await manager.preload(Client, {
@@ -153,7 +165,6 @@ export class VenteService {
         const vente = await manager.preload(Vente, { id, ...updateVenteDto });
         if (!vente) throw new Error('Vente introuvable');
 
-        // Remettre le stock des anciennes lignes avant de les supprimer
         const oldLines = await manager.find(DetailVente, {
           where: { vente: { id } },
           relations: ['produit'],
@@ -183,7 +194,6 @@ export class VenteService {
         await manager.save(Vente, vente);
         await manager.save(DetailVente, lignes);
 
-        // Charger les produits avant modification du stock pour capturer stock_avant
         const produitsIds = updateVenteDto.detail_vente.map((l: any) => l.produit);
         const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
@@ -198,7 +208,7 @@ export class VenteService {
             vente,
             stock_avant,
             stock_apres: stock_avant - ligne.quantite,
-            utilisateur: updateVenteDto.user ? { id: (updateVenteDto.user as any)?.id ?? updateVenteDto.user } : undefined,
+            utilisateur: tenantUser ?? undefined,
           });
         });
         await manager.save(lignesHistorik);
@@ -209,7 +219,6 @@ export class VenteService {
         }
         await manager.save(Produit, produits);
 
-        // Mettre à jour recu_data avec les nouvelles données
         const venteComplete = await manager.findOne(Vente, {
           where: { id },
           relations: ['boutique', 'client'],

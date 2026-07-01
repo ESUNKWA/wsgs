@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { UtilisateursService } from './utilisateurs.service';
 import { CreateUtilisateurDto } from './dto/create-utilisateur.dto';
 import { UpdateUtilisateurDto } from './dto/update-utilisateur.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
+import { Public } from '../authentication/auth/public.decorator';
 
 
 @Controller('utilisateur')
@@ -16,15 +18,27 @@ export class UtilisateursController {
     return this.responseService.success('Enregistrement effectués avec succès', data);
   }
 
+  @Public()
+  @Get('admin/existe')
+  async superAdminExiste(): Promise<DataRequest> {
+    const existe = await this.utilisateursService.superAdminExiste();
+    return this.responseService.success('Statut super admin', { existe });
+  }
+
+  @Public()
   @Post('admin')
   async createAdminUser(@Body() createUtilisateurDto: CreateUtilisateurDto): Promise<DataRequest> {
     const data = await this.utilisateursService.createAdminUser(createUtilisateurDto);
-    return this.responseService.success('Enregistrement effectué avec succès', data);
+    return this.responseService.success('Super admin créé avec succès', data);
   }
 
   @Get()
-  async findAll(@Query('profil') profil: string, @Query('boutique') boutique: string): Promise<DataRequest> {
-    const data = await this.utilisateursService.findAll(profil, boutique);
+  async findAll(
+    @Query('boutique') boutique: string,
+    @Req() req: Request,
+  ): Promise<DataRequest> {
+    const user = (req as any).user;
+    const data = await this.utilisateursService.findAll(user?.profil, boutique, user?.structureId);
     return this.responseService.success('Liste des utilisateurs', data);
   }
 

@@ -1,59 +1,121 @@
-import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthenticationDto } from './dto/create-authentication.dto';
 import { UtilisateursService } from '../utilisateurs/utilisateurs.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import { TenantService } from 'src/tenant/tenant.service';
+import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
+import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
 
 @Injectable()
 export class AuthenticationService {
 
-  constructor(private utulisateurService: UtilisateursService, private jwtService: JwtService,){}
+  constructor(
+    private utulisateurService: UtilisateursService,
+    private jwtService: JwtService,
+    private readonly tenantService: TenantService,
+  ) {}
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
-   
-    const utilisateur: any = await this.utulisateurService.signin(createAuthenticationDto.telephone);
-    
-      if (!utilisateur || !(await bcrypt.compare(createAuthenticationDto.mot_de_passe, utilisateur.mot_de_passe))) {
-        throw new NotFoundException('Identifiant ou mot de passe incorrect');
-      }
-      // Supprimer le mot de passe de l'utilisateur avant de renvoyer les données
+
+    // 1. Authentification sur la BD master (vérification des credentials)
+    const masterUser: any = await this.utulisateurService.signin(createAuthenticationDto.telephone);
+
+    if (!masterUser || !(await bcrypt.compare(createAuthenticationDto.mot_de_passe, masterUser.mot_de_passe))) {
+      throw new NotFoundException('Identifiant ou mot de passe incorrect');
+    }
+
+    const structureId: number | null =
+      masterUser.structure_id ??
+      masterUser.structure?.[0]?.id ??
+      null;
+
+    const profilCode: string = masterUser.profil?.code ?? '';
+    const isSuperAdmin = profilCode === 'super_admin';
+    const isManager    = ['admin', 'responsable_structure'].includes(profilCode);
+
+    // 2. super_admin : accès plateforme global, aucune structure requise
+    if (isSuperAdmin) {
+      const utilisateur: any = { ...masterUser };
       delete utilisateur.mot_de_passe;
 
-      const isResponsableStructure = utilisateur.profil?.code === 'responsable_structure';
-
-      if (utilisateur.boutique) {
-        utilisateur.boutique.logo = utilisateur.boutique.logo
-          ? `${process.env.BASE_URL}/${utilisateur.boutique.logo}`
-          : null;
-      }
-
-      // Pour le responsable structure : exposer toutes ses boutiques avec logo résolu
-      let boutiques: any[] = [];
-      if (isResponsableStructure && utilisateur.structure?.length) {
-        boutiques = utilisateur.structure.flatMap((s: any) =>
-          (s.boutique ?? []).map((b: any) => ({
-            ...b,
-            logo: b.logo ? `${process.env.BASE_URL}/${b.logo}` : null,
-            structure: { id: s.id, nom: s.nom },
-          }))
-        );
-      }
-
-      const payload = { userId: utilisateur.id, email: utilisateur.email, profil: utilisateur.profil?.code };
+      const payload = {
+        userId: masterUser.id,
+        telephone: masterUser.telephone,
+        email: masterUser.email,
+        profil: profilCode,
+        structureId: null,
+        is_super_admin: true,
+      };
 
       const access_token = this.jwtService.sign(payload, {
         secret: process.env.JWT_SECRET || 'secret',
         expiresIn: process.env.JWT_TOKEN_EXPIRE || '1h',
       } as JwtSignOptions);
 
-      return {
-        utilisateur: {
-          ...utilisateur,
-          ...(isResponsableStructure ? { boutiques } : {}),
-        },
-        access_token,
-      };
-    
+      return { utilisateur, access_token };
+    }
+
+    // 3. Récupérer boutique_id, boutiques et l'id tenant de l'utilisateur
+    let boutique_id: number | null = masterUser.boutique_id ?? null;
+    let boutique: any = null;
+    let boutiques: any[] = [];
+    // id à retourner au front = id dans la DB tenant (≠ id master pour éviter la collision)
+    let tenantUserId: number = masterUser.id;
+
+    if (structureId) {
+      try {
+        const tenantDs = await this.tenantService.getDataSource(structureId);
+
+        // Résolution de l'id tenant par téléphone
+        const tenantUser = await tenantDs
+          .getRepository(Utilisateur)
+          .findOne({ where: { telephone: masterUser.telephone } });
+        if (tenantUser) tenantUserId = tenantUser.id;
+
+        if (isManager) {
+          const all = await tenantDs.getRepository(Boutique).find({ order: { nom: 'ASC' } });
+          boutiques = all.map((b) => ({
+            ...b,
+            logo: b.logo ? `${process.env.BASE_URL}/${b.logo}` : null,
+          }));
+        } else {
+          if (boutique_id) {
+            const b = await tenantDs.getRepository(Boutique).findOne({ where: { id: boutique_id } });
+            if (b) {
+              boutique = { ...b, logo: b.logo ? `${process.env.BASE_URL}/${b.logo}` : null };
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('[Auth] Tenant fetch error:', err?.message);
+      }
+    }
+
+    // On remplace l'id master par l'id tenant : le front utilisera cet id pour les appels API tenant
+    const utilisateur: any = { ...masterUser, id: tenantUserId, boutique_id };
+    delete utilisateur.mot_de_passe;
+
+    // JWT : userId reste l'id master (usage interne), telephone permet la résolution cross-DB
+    const payload = {
+      userId: masterUser.id,
+      telephone: masterUser.telephone,
+      email: masterUser.email,
+      profil: profilCode,
+      structureId,
+    };
+
+    const access_token = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET || 'secret',
+      expiresIn: process.env.JWT_TOKEN_EXPIRE || '1h',
+    } as JwtSignOptions);
+
+    return {
+      utilisateur: isManager
+        ? { ...utilisateur, boutiques }
+        : { ...utilisateur, boutique },
+      access_token,
+    };
   }
 
   validateToken(token: string) {

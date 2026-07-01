@@ -6,10 +6,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Utilisateur } from './entities/utilisateur.entity';
 import { ProfilsService } from '../profils/profils.service';
 import { Profil } from '../profils/entities/profil.entity';
-
 @Module({
   imports: [TypeOrmModule.forFeature([Utilisateur, Profil])],
   controllers: [UtilisateursController],
   providers: [UtilisateursService, ResponseService, ProfilsService],
+  exports: [UtilisateursService],
 })
 export class UtilisateursModule {}

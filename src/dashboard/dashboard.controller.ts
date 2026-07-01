@@ -8,8 +8,16 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get()
-  async getStatsBoutique(@Query('boutique') boutiqueId: number){ 
-      return await this.dashboardService.getDashboardStats(boutiqueId);
+  async getStatsBoutique(@Query('boutique') boutiqueId: number) {
+    return await this.dashboardService.getDashboardStats(boutiqueId);
+  }
+
+  @Get('caissier')
+  async getDashboardCaissier(
+    @Query('boutique') boutiqueId: string,
+    @Query('caissier') caissier: string,
+  ) {
+    return await this.dashboardService.getDashboardCaissier(+boutiqueId, caissier);
   }
 
   @Post()

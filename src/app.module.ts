@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProduitModule } from './config/produit/produit.module';
@@ -28,6 +28,14 @@ import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard'
 import { PdfModule } from './documents/pdf/pdf.module';
+import { TenantModule } from './tenant/tenant.module';
+import { TenantMiddleware } from './tenant/tenant.middleware';
+import { PrevisionModule } from './prevision/prevision.module';
+import { AiModule } from './ai/ai.module';
+import { Utilisateur } from './gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { Structure } from './gestion-boutiques/structure/entities/structure.entity';
+import { Profil } from './gestion-utilisateurs/profils/entities/profil.entity';
+import { TenantConfig } from './tenant/entities/tenant-config.entity';
 
 @Module({
   imports: [
@@ -45,7 +53,7 @@ import { PdfModule } from './documents/pdf/pdf.module';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      entities: [Utilisateur, Profil, Structure, TenantConfig],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -69,6 +77,9 @@ import { PdfModule } from './documents/pdf/pdf.module';
     CommandeFournisseurModule,
     CommandeClientModule,
     SessionCaisseModule,
+    TenantModule,
+    PrevisionModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService, ResponseService, {
@@ -76,4 +87,8 @@ import { PdfModule } from './documents/pdf/pdf.module';
       useClass: JwtAuthGuard,
     }],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}

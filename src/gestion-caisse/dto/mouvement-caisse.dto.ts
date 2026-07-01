@@ -17,5 +17,6 @@ export class MouvementCaisseDto {
   mode_paiement?: string;
 
   @IsOptional()
-  caissier?: number;
+  @IsString()
+  caissier?: string;
 }

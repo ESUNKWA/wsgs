@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { HistoriqueStock } from './entities/historique-stock.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class HistoriqueStockService {
 
-  constructor(
-    @InjectRepository(HistoriqueStock)
-    private historiqueRepository: Repository<HistoriqueStock>,
-  ) {}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get historiqueRepository() {
+    return this.tenantContext.getDataSource().getRepository(HistoriqueStock);
+  }
 
   async findAll(query: { boutique?: number; produit?: number; page?: number; limit?: number }) {
     if (!query.boutique && !query.produit) {
@@ -25,12 +25,12 @@ export class HistoriqueStockService {
       .leftJoinAndSelect('h.produit', 'produit')
       .leftJoinAndSelect('h.achat', 'achat')
       .leftJoinAndSelect('h.vente', 'vente')
+      .leftJoinAndSelect('h.utilisateur', 'utilisateur')
       .orderBy('h.created_at', 'DESC')
       .skip(skip)
       .take(limit);
 
     if (query.boutique) {
-      // filtre via produit.boutique OU achat.boutique OU vente.boutique
       qb.leftJoin('produit.boutique', 'boutique')
         .where('boutique.id = :boutiqueId', { boutiqueId: query.boutique });
     }
@@ -40,7 +40,6 @@ export class HistoriqueStockService {
     }
 
     const [items, total] = await qb.getManyAndCount();
-
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 

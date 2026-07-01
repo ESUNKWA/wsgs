@@ -1,15 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CreateDetailAchatDto } from './dto/create-detail-achat.dto';
 import { UpdateDetailAchatDto } from './dto/update-detail-achat.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { DetailAchat } from './entities/detail-achat.entity';
-import { Repository } from 'typeorm';
 import { Achat } from '../achat/entities/achat.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class DetailAchatService {
 
-  constructor( @InjectRepository(DetailAchat) private detailAchatRepository: Repository<DetailAchat> ){}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get detailAchatRepository() {
+    return this.tenantContext.getDataSource().getRepository(DetailAchat);
+  }
 
   create(createDetailAchatDto: CreateDetailAchatDto) {
     return 'This action adds a new detailAchat';
@@ -20,8 +23,7 @@ export class DetailAchatService {
   }
 
   async findOne(idAchat: Achat) {
-    const data = await this.detailAchatRepository.findOne({where: {achat: idAchat}});
-    return data;
+    return await this.detailAchatRepository.findOne({ where: { achat: idAchat } });
   }
 
   update(id: number, updateDetailAchatDto: UpdateDetailAchatDto) {

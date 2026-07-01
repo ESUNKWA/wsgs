@@ -1,18 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Client } from './entities/client.entity';
-import { Repository } from 'typeorm/repository/Repository';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class ClientService {
 
-  constructor(@InjectRepository(Client) private clientRepository: Repository<Client>){}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get clientRepository() {
+    return this.tenantContext.getDataSource().getRepository(Client);
+  }
 
   async create(createClientDto: CreateClientDto): Promise<Client> {
-    const data = await this.clientRepository.save(createClientDto);
-    return data;
+    return await this.clientRepository.save(createClientDto);
   }
 
   async findAll(query?: { boutique?: number; page?: number; limit?: number }) {
@@ -34,10 +36,8 @@ export class ClientService {
   }
 
   async update(id: number, updateClientDto: UpdateClientDto) {
-    const data = await this.clientRepository.preload({id, ...updateClientDto});
-    if(!data){
-      throw new NotFoundException('Client non trouvé');
-    }
+    const data = await this.clientRepository.preload({ id, ...updateClientDto });
+    if (!data) throw new NotFoundException('Client non trouvé');
     return await this.clientRepository.save(data);
   }
 

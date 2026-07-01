@@ -24,7 +24,7 @@ export class SessionCaisseController {
     @Body() dto: FermerCaisseDto,
     @Query('caissier') caissier?: string,
   ) {
-    const data = await this.sessionCaisseService.fermer(+id, dto, caissier ? +caissier : undefined);
+    const data = await this.sessionCaisseService.fermer(+id, dto, caissier ?? undefined);
     return this.responseService.success('Session de caisse fermée', data);
   }
 
@@ -39,7 +39,7 @@ export class SessionCaisseController {
     @Query('boutique') boutique: string,
     @Query('caissier') caissier?: string,
   ) {
-    const data = await this.sessionCaisseService.getSessionActive(+boutique, caissier ? +caissier : undefined);
+    const data = await this.sessionCaisseService.getSessionActive(+boutique, caissier ?? undefined);
     return this.responseService.success('Session active', data);
   }
 

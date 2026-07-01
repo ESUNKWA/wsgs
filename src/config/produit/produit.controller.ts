@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
 import { ProduitService } from './produit.service';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { multerOptions } from 'src/common/helpers/multer.config';
-import { AuthGuard } from '@nestjs/passport';
+import { tenantMulterOptions } from 'src/common/helpers/tenant-file.helper';
+import { importMulterOptions } from 'src/common/helpers/import-multer.config';
 
 
 @Controller('produit')
@@ -15,9 +15,8 @@ export class ProduitController {
 
   @Post()
   @HttpCode(201)
-  @UseInterceptors(FileInterceptor('image', multerOptions('/produits'))) 
+  @UseInterceptors(FileInterceptor('image', tenantMulterOptions('/produits')))
   async create(@Body() createProduitDto: CreateProduitDto, @UploadedFile() image: Express.Multer.File): Promise<DataRequest> {
-    
     const data = await this.produitService.create(createProduitDto, image);
     return this.responseService.success('Enregistrement effectué avec succès', data);
   }
@@ -42,7 +41,7 @@ export class ProduitController {
   }
 
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('image', multerOptions('/produits')))
+  @UseInterceptors(FileInterceptor('image', tenantMulterOptions('/produits')))
   async update(@Param('id') id: string, @Body() updateProduitDto: UpdateProduitDto, @UploadedFile() image: Express.Multer.File) {
     const data = await this.produitService.update(+id, updateProduitDto, image);
     return this.responseService.success('Modification effectuée avec succès', data);
@@ -51,5 +50,19 @@ export class ProduitController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.produitService.remove(+id);
+  }
+
+  @Post('import')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', importMulterOptions))
+  async importFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('boutique') boutique: string,
+  ): Promise<DataRequest> {
+    const result = await this.produitService.importFromFile(file, +boutique);
+    return this.responseService.success(
+      `Import terminé : ${result.created} créé(s), ${result.skipped} ignoré(s)`,
+      result,
+    );
   }
 }

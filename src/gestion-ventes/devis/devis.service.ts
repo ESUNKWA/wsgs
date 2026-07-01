@@ -1,25 +1,33 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Devis, StatutDevis } from './entities/devis.entity';
 import { DetailDevis } from './entities/detail-devis.entity';
 import { CreateDevisDto } from './dto/create-devis.dto';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { Client } from '../client/entities/client.entity';
 import { VenteService } from '../vente/vente.service';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class DevisService {
 
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Devis) private devisRepository: Repository<Devis>,
+    private readonly tenantContext: TenantContextService,
     private readonly venteService: VenteService,
   ) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
+  private get devisRepository() { return this.dataSource.getRepository(Devis); }
 
   async create(createDevisDto: CreateDevisDto): Promise<Devis> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const telephone = String((createDevisDto as any).user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+        }
+
         let client: Client | null = null;
         if (createDevisDto.clientdata?.telephone) {
           const existing = await manager.findOne(Client, {
@@ -34,7 +42,10 @@ export class DevisService {
         createDevisDto.statut = 'brouillon';
         if (client) createDevisDto.client = client;
 
-        const devis = manager.create(Devis, createDevisDto);
+        const devis = manager.create(Devis, {
+          ...createDevisDto,
+          user: tenantUser ?? undefined,
+        } as any);
         const devisSauvegarde = await manager.save(devis);
 
         const lignes = createDevisDto.detail_devis.map((ligne: any) =>
@@ -75,7 +86,7 @@ export class DevisService {
   async findOne(id: number): Promise<Devis> {
     const devis = await this.devisRepository.findOne({
       where: { id },
-      relations: ['detail_devis', 'client', 'boutique'],
+      relations: ['detail_devis', 'client', 'boutique', 'user'],
     });
     if (!devis) throw new NotFoundException('Devis inexistant');
     return devis;
@@ -135,7 +146,7 @@ export class DevisService {
         quantite: d.quantite,
         prix_unitaire_vente: d.prix_unitaire,
       })),
-      user: devis.user,
+      user: (devis as any).user?.telephone ?? null,
     };
 
     const result = await this.venteService.create(venteDto);

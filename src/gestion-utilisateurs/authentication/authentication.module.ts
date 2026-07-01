@@ -8,10 +8,12 @@ import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { ProfilsService } from '../profils/profils.service';
 import { Profil } from '../profils/entities/profil.entity';
+import { TenantModule } from 'src/tenant/tenant.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Utilisateur, Profil])
+    TypeOrmModule.forFeature([Utilisateur, Profil]),
+    TenantModule,
   ],
   controllers: [AuthenticationController],
   providers: [AuthenticationService, JwtService, UtilisateursService, JwtStrategy, ProfilsService]

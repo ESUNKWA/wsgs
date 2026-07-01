@@ -7,7 +7,7 @@ export class OuvrirCaisseDto {
   boutique!: number;
 
   @IsNotEmpty({ message: 'Le caissier est requis' })
-  caissier!: number;
+  caissier!: string;
 
   @ValidateNested()
   @Type(() => FondParModeDto)

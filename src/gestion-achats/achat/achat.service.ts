@@ -1,26 +1,36 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateAchatDto } from './dto/create-achat.dto';
-import { DataSource, In, Repository } from 'typeorm';
+import { In } from 'typeorm';
 import { Achat } from './entities/achat.entity';
-import { InjectRepository } from '@nestjs/typeorm';
 import { DetailAchat } from '../detail-achat/entities/detail-achat.entity';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { HistoriqueStock } from '../historique-stock/entities/historique-stock.entity';
 import { Produit } from 'src/config/produit/entities/produit.entity';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class AchatService {
 
-  constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Achat) private achatRepository: Repository<Achat>,
-  ) {}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
+  private get achatRepository() { return this.dataSource.getRepository(Achat); }
 
   async create(createAchatDto: CreateAchatDto): Promise<Achat> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const telephone = String((createAchatDto as any).user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+        }
+
         createAchatDto.reference = ReferenceGeneratorHelper.generate('ACH');
-        const achat = manager.create(Achat, createAchatDto);
+        const achat = manager.create(Achat, {
+          ...createAchatDto,
+          user: tenantUser ?? undefined,
+        } as any);
         const achatSauvegarde = await manager.save(achat);
 
         const lignes = createAchatDto.detail_achat.map((ligne: any) =>
@@ -33,7 +43,6 @@ export class AchatService {
         );
         await manager.save(lignes);
 
-        // Charger les produits avant de modifier le stock pour capturer stock_avant
         const produitsIds = createAchatDto.detail_achat.map((l: any) => l.produit);
         const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
@@ -48,7 +57,7 @@ export class AchatService {
             achat,
             stock_avant,
             stock_apres: stock_avant + ligne.quantite,
-            utilisateur: createAchatDto.user ? { id: (createAchatDto.user as any)?.id ?? createAchatDto.user } : undefined,
+            utilisateur: tenantUser ?? undefined,
           });
         });
         await manager.save(lignesHistorik);
@@ -96,11 +105,15 @@ export class AchatService {
   async update(id: number, updateAchatDto: any): Promise<Achat> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const telephone = String(updateAchatDto.user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+        }
 
         const achat = await manager.preload(Achat, { id, ...updateAchatDto });
         if (!achat) throw new Error('Achat introuvable');
 
-        // Charger les anciennes lignes pour corriger le stock avant suppression
         const oldLines = await manager.find(DetailAchat, {
           where: { achat: { id } },
           relations: ['produit'],
@@ -110,7 +123,7 @@ export class AchatService {
           const oldProduits = await manager.findBy(Produit, { id: In(oldProduitIds) });
           for (const p of oldProduits) {
             const l = oldLines.find((ol) => ol.produit.id === p.id);
-            if (l) p.stock_disponible -= l.quantite; // annuler l'entrée de stock
+            if (l) p.stock_disponible -= l.quantite;
           }
           await manager.save(Produit, oldProduits);
         }
@@ -128,14 +141,13 @@ export class AchatService {
 
         await manager.save(Achat, achat);
         await manager.save(DetailAchat, lignes);
-
         await manager.delete(HistoriqueStock, { achat: achat.id });
 
-        const produitsIdsUpd = updateAchatDto.detail_achat.map((l: any) => l.produit);
-        const produitsUpd = await manager.findBy(Produit, { id: In(produitsIdsUpd) });
+        const produitsIds = updateAchatDto.detail_achat.map((l: any) => l.produit);
+        const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
         const lignesHistorik = updateAchatDto.detail_achat.map((ligne: any) => {
-          const produit = produitsUpd.find((p) => p.id === ligne.produit);
+          const produit = produits.find((p) => p.id === ligne.produit);
           const stock_avant = produit?.stock_disponible ?? 0;
           return manager.create(HistoriqueStock, {
             produit: ligne.produit,
@@ -145,16 +157,16 @@ export class AchatService {
             achat,
             stock_avant,
             stock_apres: stock_avant + ligne.quantite,
-            utilisateur: updateAchatDto.user ? { id: (updateAchatDto.user as any)?.id ?? updateAchatDto.user } : undefined,
+            utilisateur: tenantUser ?? undefined,
           });
         });
         await manager.save(lignesHistorik);
 
-        for (const produit of produitsUpd) {
+        for (const produit of produits) {
           const ligne = updateAchatDto.detail_achat.find((l: any) => l.produit === produit.id);
           if (ligne) produit.stock_disponible += ligne.quantite;
         }
-        await manager.save(Produit, produitsUpd);
+        await manager.save(Produit, produits);
 
         return achat;
       });

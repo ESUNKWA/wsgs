@@ -3,27 +3,47 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import { SessionCaisse, FondParMode } from './entities/session-caisse.entity';
 import { MouvementCaisse } from './entities/mouvement-caisse.entity';
 import { OuvrirCaisseDto } from './dto/ouvrir-caisse.dto';
 import { FermerCaisseDto } from './dto/fermer-caisse.dto';
 import { MouvementCaisseDto } from './dto/mouvement-caisse.dto';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 const MODES = ['espece', 'mobile_money', 'carte', 'credit', 'mixte'] as const;
 
 @Injectable()
 export class SessionCaisseService {
-  constructor(
-    @InjectRepository(SessionCaisse)
-    private sessionRepo: Repository<SessionCaisse>,
-    @InjectRepository(MouvementCaisse)
-    private mouvementRepo: Repository<MouvementCaisse>,
-    private readonly dataSource: DataSource,
-  ) {}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
+  private get sessionRepo() { return this.dataSource.getRepository(SessionCaisse); }
+  private get mouvementRepo() { return this.dataSource.getRepository(MouvementCaisse); }
+
+  /**
+   * Résout un caissier par id (tenant) OU par téléphone.
+   * Le front peut envoyer l'un ou l'autre — les deux sont acceptés.
+   */
+  private async resolveCaissier(valeur: string | number): Promise<Utilisateur> {
+    const repo = this.dataSource.getRepository(Utilisateur);
+    const asStr = String(valeur).trim();
+    const asId  = parseInt(asStr, 10);
+
+    // Priorité id numérique (tenant DB, pas de collision avec master ici)
+    if (!isNaN(asId)) {
+      const byId = await repo.findOne({ where: { id: asId } });
+      if (byId) return byId;
+    }
+
+    // Fallback téléphone
+    const byTel = await repo.findOne({ where: { telephone: asStr } });
+    if (byTel) return byTel;
+
+    throw new BadRequestException('Caissier introuvable');
+  }
 
   async ouvrir(dto: OuvrirCaisseDto): Promise<SessionCaisse> {
     const boutique = await this.dataSource.getRepository(Boutique).findOne({
@@ -36,11 +56,13 @@ export class SessionCaisseService {
       );
     }
 
+    const caissier = await this.resolveCaissier(dto.caissier);
+
     // Mode caisse par caissier : chaque utilisateur a sa propre session
     const existante = await this.sessionRepo.findOne({
       where: {
         boutique: { id: dto.boutique },
-        caissier: { id: dto.caissier },
+        caissier: { id: caissier.id },
         statut: 'ouverte',
       },
     });
@@ -56,12 +78,12 @@ export class SessionCaisseService {
       statut: 'ouverte',
       date_ouverture: new Date(),
       boutique: { id: dto.boutique } as any,
-      caissier: { id: dto.caissier } as any,
+      caissier: { id: caissier.id } as any,
     });
     return this.sessionRepo.save(session);
   }
 
-  async fermer(id: number, dto: FermerCaisseDto, caissierId?: number): Promise<SessionCaisse> {
+  async fermer(id: number, dto: FermerCaisseDto, caissierTelephone?: string): Promise<SessionCaisse> {
     const session = await this.sessionRepo.findOne({
       where: { id },
       relations: ['mouvements', 'boutique', 'caissier'],
@@ -70,7 +92,7 @@ export class SessionCaisseService {
     if (session.statut === 'fermee') {
       throw new BadRequestException('Cette session est déjà fermée');
     }
-    if (caissierId && session.caissier?.id !== caissierId) {
+    if (caissierTelephone && session.caissier?.telephone !== caissierTelephone) {
       throw new BadRequestException('Vous ne pouvez fermer que votre propre session de caisse.');
     }
 
@@ -145,24 +167,32 @@ export class SessionCaisseService {
       );
     }
 
+    let caissier: Utilisateur | null = null;
+    if (dto.caissier) {
+      caissier = await this.resolveCaissier(dto.caissier);
+    }
+
     const mouvement = this.mouvementRepo.create({
       type: dto.type,
       motif: dto.motif,
       montant: dto.montant,
       mode_paiement: dto.mode_paiement ?? 'espece',
       session: { id: sessionId } as any,
-      caissier: dto.caissier ? ({ id: dto.caissier } as any) : null,
+      caissier: caissier ? ({ id: caissier.id } as any) : null,
     });
     return this.mouvementRepo.save(mouvement);
   }
 
-  async getSessionActive(boutiqueId: number, caissierId?: number): Promise<SessionCaisse | null> {
+  async getSessionActive(boutiqueId: number, caissierTelephone?: string): Promise<SessionCaisse | null> {
+    let caissierWhere = {};
+    if (caissierTelephone) {
+      try {
+        const caissier = await this.resolveCaissier(caissierTelephone);
+        caissierWhere = { caissier: { id: caissier.id } };
+      } catch { /* pas de filtre caissier si introuvable */ }
+    }
     return this.sessionRepo.findOne({
-      where: {
-        boutique: { id: boutiqueId },
-        statut: 'ouverte',
-        ...(caissierId ? { caissier: { id: caissierId } } : {}),
-      },
+      where: { boutique: { id: boutiqueId }, statut: 'ouverte', ...caissierWhere },
     });
   }
 

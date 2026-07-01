@@ -1,26 +1,33 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { CommandeClient, StatutCommandeClient } from './entities/commande-client.entity';
 import { DetailCommandeClient } from './entities/detail-commande-client.entity';
 import { CreateCommandeClientDto } from './dto/create-commande-client.dto';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { Client } from '../client/entities/client.entity';
 import { VenteService } from '../vente/vente.service';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Injectable()
 export class CommandeClientService {
 
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(CommandeClient)
-    private commandeRepository: Repository<CommandeClient>,
+    private readonly tenantContext: TenantContextService,
     private readonly venteService: VenteService,
   ) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
+  private get commandeRepository() { return this.dataSource.getRepository(CommandeClient); }
 
   async create(createDto: CreateCommandeClientDto): Promise<CommandeClient> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const telephone = String((createDto as any).user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+        }
+
         let client: Client | null = null;
         if (createDto.clientdata?.telephone) {
           const existing = await manager.findOne(Client, {
@@ -35,7 +42,10 @@ export class CommandeClientService {
         createDto['statut'] = 'en_attente';
         if (client) createDto.client = client;
 
-        const commande = manager.create(CommandeClient, createDto);
+        const commande = manager.create(CommandeClient, {
+          ...createDto,
+          user: tenantUser ?? undefined,
+        } as any);
         const commandeSauvegardee = await manager.save(commande);
 
         const lignes = createDto.detail_commande.map((ligne: any) =>
@@ -76,7 +86,7 @@ export class CommandeClientService {
   async findOne(id: number): Promise<CommandeClient> {
     const commande = await this.commandeRepository.findOne({
       where: { id },
-      relations: ['detail_commande', 'client', 'boutique'],
+      relations: ['detail_commande', 'client', 'boutique', 'user'],
     });
     if (!commande) throw new NotFoundException('Commande client inexistante');
     return commande;
@@ -140,7 +150,7 @@ export class CommandeClientService {
         quantite: d.quantite,
         prix_unitaire_vente: d.prix_unitaire,
       })),
-      user: commande.user,
+      user: (commande as any).user?.telephone ?? null,
     };
 
     const result = await this.venteService.create(venteDto);

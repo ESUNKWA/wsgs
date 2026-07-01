@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDashboardDto } from './dto/create-dashboard.dto';
 import { UpdateDashboardDto } from './dto/update-dashboard.dto';
-import { DataSource } from 'typeorm';
+import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 
 @Injectable()
 export class DashboardService {
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly tenantContext: TenantContextService) {}
+
+  private get dataSource() { return this.tenantContext.getDataSource(); }
 
   async getDashboardStats(boutiqueId: number) {
     
@@ -179,6 +182,88 @@ export class DashboardService {
 
     const result = await this.dataSource.query(query, [boutiqueId]);
     return result[0]; // json_build_object renvoie un tableau contenant un objet
+  }
+
+  async getDashboardCaissier(boutiqueId: number, caissierVal: string | number) {
+    const ds = this.dataSource;
+
+    // Résolution caissier : accepte id tenant OU téléphone
+    const asStr = String(caissierVal).trim();
+    const asId  = parseInt(asStr, 10);
+    let caissier: Utilisateur | null = null;
+    if (!isNaN(asId)) caissier = await ds.getRepository(Utilisateur).findOne({ where: { id: asId } });
+    if (!caissier)    caissier = await ds.getRepository(Utilisateur).findOne({ where: { telephone: asStr } });
+    if (!caissier) throw new NotFoundException('Caissier introuvable');
+
+    const params = [boutiqueId, caissier.id];
+
+    // 1. Résumé global du jour
+    const [summary] = await ds.query(
+      `SELECT
+         COUNT(*)::int                                            AS nb_ventes,
+         COALESCE(SUM(r_montant_total_apres_remise), 0)::float   AS chiffre_affaires
+       FROM t_ventes
+       WHERE "boutiqueId" = $1
+         AND "userId"     = $2
+         AND DATE(created_at) = CURRENT_DATE
+         AND deleted_at IS NULL`,
+      params,
+    );
+
+    // 2. Répartition par mode de paiement
+    const modesRows: { mode: string; total: number }[] = await ds.query(
+      `SELECT
+         r_mode_paiement                                        AS mode,
+         COALESCE(SUM(r_montant_total_apres_remise), 0)::float AS total
+       FROM t_ventes
+       WHERE "boutiqueId" = $1
+         AND "userId"     = $2
+         AND DATE(created_at) = CURRENT_DATE
+         AND deleted_at IS NULL
+       GROUP BY r_mode_paiement`,
+      params,
+    );
+    const par_mode_paiement = Object.fromEntries(modesRows.map(r => [r.mode, r.total]));
+
+    // 3. Détail produits vendus
+    const produits: {
+      produit_id: number;
+      nom: string;
+      prix_unitaire: number;
+      quantite_vendue: number;
+      montant_total: number;
+    }[] = await ds.query(
+      `SELECT
+         p.id                                               AS produit_id,
+         p.r_nom                                           AS nom,
+         p.r_prix_vente::float                             AS prix_unitaire,
+         SUM(dv.r_quantite)::int                           AS quantite_vendue,
+         SUM(dv.r_quantite * dv.r_prix_unitaire_vente)::float AS montant_total
+       FROM t_detail_ventes dv
+       JOIN t_produits  p ON p.id  = dv."produitId"
+       JOIN t_ventes    v ON v.id  = dv."venteId"
+       WHERE v."boutiqueId" = $1
+         AND v."userId"     = $2
+         AND DATE(v.created_at) = CURRENT_DATE
+         AND v.deleted_at IS NULL
+       GROUP BY p.id, p.r_nom, p.r_prix_vente
+       ORDER BY quantite_vendue DESC`,
+      params,
+    );
+
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      caissier: {
+        id: caissier.id,
+        nom: caissier.nom,
+        prenoms: caissier.prenoms,
+        telephone: caissier.telephone,
+      },
+      nb_ventes: summary.nb_ventes,
+      chiffre_affaires: summary.chiffre_affaires,
+      par_mode_paiement,
+      produits,
+    };
   }
 
   create(createDashboardDto: CreateDashboardDto) {
