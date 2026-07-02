@@ -43,7 +43,10 @@ export class BoutiqueController {
     @UploadedFile() logo: Express.Multer.File,
     @Query('structure') structure?: string,
   ): Promise<DataRequest> {
-    const data = await this.boutiqueService.update(+id, updateBoutiqueDto, logo, structure ? +structure : undefined);
+    // structure peut venir du query param OU du body (cas super_admin)
+    const bodyStructure = (updateBoutiqueDto as any).structure;
+    const structureId = structure ? +structure : bodyStructure ? +bodyStructure : undefined;
+    const data = await this.boutiqueService.update(+id, updateBoutiqueDto, logo, structureId);
     return this.responseService.success('Modification effectuée avec succès', data);
   }
 

@@ -73,16 +73,21 @@ export class BoutiqueService {
 
   async update(id: number, updateBoutiqueDto: UpdateBoutiqueDto, file?: Express.Multer.File, structureId?: number) {
     try {
-      const ds = await this.resolveDs(structureId);
+      const { structure, ...rest } = updateBoutiqueDto as any;
+      // structure peut venir du param explicit ou du body DTO
+      const sid: number | undefined =
+        structureId ??
+        (structure != null ? +(typeof structure === 'object' ? structure.id : structure) || undefined : undefined) ??
+        (this.tenantContext.hasContext() ? (this.tenantContext.getStructureId() ?? undefined) : undefined);
+
+      const ds = await this.resolveDs(sid);
       const repo = ds.getRepository(Boutique);
-      const boutique = await repo.preload({ id, ...updateBoutiqueDto });
+      const boutique = await repo.preload({ id, ...rest });
       if (!boutique) throw new NotFoundException('Boutique inexistante');
-      if (file) {
-        const sid = structureId ?? (this.tenantContext.hasContext() ? this.tenantContext.getStructureId() : null);
-        boutique.logo = buildTenantFilePath(sid, 'logos', file.filename);
-      }
+      if (file) boutique.logo = buildTenantFilePath(sid ?? null, 'logos', file.filename);
       return await repo.save(boutique);
     } catch (error: any) {
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(error.message);
     }
   }
