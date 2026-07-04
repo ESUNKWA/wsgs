@@ -1,6 +1,7 @@
 import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { PdfService } from './pdf.service';
 import { generateHtml } from 'src/common/shared/generateHtml';
+import { generateHtmlThermique } from 'src/common/shared/generateHtmlThermique';
 import { Public } from 'src/gestion-utilisateurs/authentication/auth/public.decorator';
 import { VenteService } from 'src/gestion-ventes/vente/vente.service';
 import { DevisService } from 'src/gestion-ventes/devis/devis.service';
@@ -26,6 +27,14 @@ export class PdfController {
     const factureData = await this.venteService.findOne(+id);
     const html = generateHtml(factureData.recu_data, 'FACTURE');
     return this.pdfService.generatePdf(html, `facture_${Date.now()}.pdf`);
+  }
+
+  @Public()
+  @Get('generate/facture/:id/thermique')
+  async generateFactureThermique(@Param('id') id: string) {
+    const factureData = await this.venteService.findOne(+id);
+    const html = generateHtmlThermique(factureData.recu_data, 'FACTURE');
+    return this.pdfService.generateThermalPdf(html, `facture_thermique_${Date.now()}.pdf`);
   }
 
   @Public()

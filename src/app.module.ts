@@ -36,6 +36,13 @@ import { Utilisateur } from './gestion-utilisateurs/utilisateurs/entities/utilis
 import { Structure } from './gestion-boutiques/structure/entities/structure.entity';
 import { Profil } from './gestion-utilisateurs/profils/entities/profil.entity';
 import { TenantConfig } from './tenant/entities/tenant-config.entity';
+import { Abonnement } from './abonnement/entities/abonnement.entity';
+import { PlanTarif } from './abonnement/entities/plan-tarif.entity';
+import { BoutiqueAbonnement } from './abonnement/entities/boutique-abonnement.entity';
+import { ConfigTarif } from './abonnement/entities/config-tarif.entity';
+import { AbonnementModule } from './abonnement/abonnement.module';
+import { AbonnementGuard } from './abonnement/guards/abonnement.guard';
+import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.module';
 
 @Module({
   imports: [
@@ -53,7 +60,7 @@ import { TenantConfig } from './tenant/entities/tenant-config.entity';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -80,12 +87,16 @@ import { TenantConfig } from './tenant/entities/tenant-config.entity';
     TenantModule,
     PrevisionModule,
     AiModule,
+    AbonnementModule,
+    RetourVenteModule,
   ],
   controllers: [AppController],
-  providers: [AppService, ResponseService, {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    }],
+  providers: [
+    AppService,
+    ResponseService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AbonnementGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

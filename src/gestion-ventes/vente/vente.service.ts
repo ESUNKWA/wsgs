@@ -118,7 +118,15 @@ export class VenteService {
     }
   }
 
-  async findAll(query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(query: {
+    boutique: number;
+    reference?: string;
+    montant?: number;
+    date_debut?: string;
+    date_fin?: string;
+    page?: number;
+    limit?: number;
+  }) {
     if (isNaN(query.boutique)) {
       throw new BadRequestException('Veuillez préciser la boutique.');
     }
@@ -126,12 +134,34 @@ export class VenteService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [items, total] = await this.venteRepository.findAndCount({
-      where: { boutique: { id: query.boutique } },
-      order: { created_at: 'DESC' },
-      skip,
-      take: limit,
-    });
+    const qb = this.dataSource.getRepository(Vente)
+      .createQueryBuilder('v')
+      .leftJoinAndSelect('v.client', 'client')
+      .leftJoinAndSelect('v.user', 'user')
+      .leftJoinAndSelect('v.detail_vente', 'details')
+      .leftJoinAndSelect('details.produit', 'produit')
+      .where('v.boutiqueId = :boutiqueId', { boutiqueId: query.boutique });
+
+    if (query.reference) {
+      qb.andWhere('v.reference ILIKE :reference', { reference: `%${query.reference}%` });
+    }
+    if (query.montant !== undefined) {
+      qb.andWhere('v.montant_total = :montant', { montant: query.montant });
+    }
+    if (query.date_debut) {
+      qb.andWhere('v.created_at >= :date_debut', { date_debut: new Date(query.date_debut) });
+    }
+    if (query.date_fin) {
+      const fin = new Date(query.date_fin);
+      fin.setHours(23, 59, 59, 999);
+      qb.andWhere('v.created_at <= :date_fin', { date_fin: fin });
+    }
+
+    const [items, total] = await qb
+      .orderBy('v.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

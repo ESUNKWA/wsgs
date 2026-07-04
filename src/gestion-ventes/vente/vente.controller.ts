@@ -16,8 +16,24 @@ export class VenteController {
   }
 
   @Get()
-  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }) {
-    const result = await this.venteService.findAll(query);
+  async findAll(
+    @Query('boutique') boutique: string,
+    @Query('reference') reference?: string,
+    @Query('montant') montant?: string,
+    @Query('date_debut') date_debut?: string,
+    @Query('date_fin') date_fin?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.venteService.findAll({
+      boutique: +boutique,
+      reference,
+      montant: montant ? +montant : undefined,
+      date_debut,
+      date_fin,
+      page: page ? +page : 1,
+      limit: limit ? +limit : 20,
+    });
     return this.responseService.successPaginated('Liste des ventes', result);
   }
 

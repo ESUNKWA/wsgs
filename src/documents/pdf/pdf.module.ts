@@ -8,5 +8,6 @@ import { DevisModule } from 'src/gestion-ventes/devis/devis.module';
   imports: [VenteModule, DevisModule],
   controllers: [PdfController],
   providers: [PdfService],
+  exports: [PdfService],
 })
 export class PdfModule {}

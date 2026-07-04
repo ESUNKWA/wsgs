@@ -6,6 +6,7 @@ import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { TenantService } from 'src/tenant/tenant.service';
 import { DataSource } from 'typeorm';
 import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
+import { AbonnementService } from 'src/abonnement/abonnement.service';
 
 @Injectable()
 export class BoutiqueService {
@@ -13,6 +14,7 @@ export class BoutiqueService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly tenantService: TenantService,
+    private readonly abonnementService: AbonnementService,
   ) {}
 
   private async resolveDs(structureId?: number): Promise<DataSource> {
@@ -30,15 +32,49 @@ export class BoutiqueService {
         dtoStructureId ?? (this.tenantContext.hasContext() ? (this.tenantContext.getStructureId() ?? undefined) : undefined);
       const ds = await this.resolveDs(structureId);
       const repo = ds.getRepository(Boutique);
+
+      // Compter les boutiques existantes pour savoir si c'est une boutique supplémentaire
+      const nbExistantes = structureId
+        ? await repo.count({ where: { structure_id: structureId, is_active: true } })
+        : 0;
+
       const data = repo.create({
         ...rest,
         structure_id: structureId,
+        is_active: true,
         logo: file ? buildTenantFilePath(structureId ?? null, 'logos', file.filename) : null,
       });
-      return await repo.save(data) as any;
+      const saved = await repo.save(data) as any;
+
+      // Si ce n'est pas la 1ère boutique, notifier l'abonnement (facturation)
+      if (structureId && nbExistantes >= 1) {
+        await this.abonnementService.notifierAjoutBoutique(structureId, saved.id, saved.nom).catch(() => null);
+      }
+
+      return saved;
     } catch (error: any) {
       throw new InternalServerErrorException(error.message);
     }
+  }
+
+  async toggleActive(id: number, activer: boolean, structureId?: number): Promise<Boutique> {
+    const ds = await this.resolveDs(structureId);
+    const repo = ds.getRepository(Boutique);
+    const boutique = await repo.findOne({ where: { id } });
+    if (!boutique) throw new NotFoundException('Boutique inexistante');
+
+    await repo.update(id, { is_active: activer });
+
+    const sid = structureId ?? boutique.structure_id;
+    if (sid) {
+      if (activer) {
+        await this.abonnementService.notifierActivationBoutique(sid, id).catch(() => null);
+      } else {
+        await this.abonnementService.notifierDesactivationBoutique(sid, id).catch(() => null);
+      }
+    }
+
+    return { ...boutique, is_active: activer };
   }
 
   async findAll(structureId?: number): Promise<Boutique[]> {

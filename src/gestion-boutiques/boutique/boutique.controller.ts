@@ -50,6 +50,28 @@ export class BoutiqueController {
     return this.responseService.success('Modification effectuée avec succès', data);
   }
 
+  @Patch(':id/desactiver')
+  async desactiver(
+    @Param('id') id: string,
+    @Query('structure') structure?: string,
+    @Body('structure') bodyStructure?: string,
+  ): Promise<DataRequest> {
+    const structureId = structure ? +structure : bodyStructure ? +bodyStructure : undefined;
+    const data = await this.boutiqueService.toggleActive(+id, false, structureId);
+    return this.responseService.success('Boutique désactivée', data);
+  }
+
+  @Patch(':id/activer')
+  async activer(
+    @Param('id') id: string,
+    @Query('structure') structure?: string,
+    @Body('structure') bodyStructure?: string,
+  ): Promise<DataRequest> {
+    const structureId = structure ? +structure : bodyStructure ? +bodyStructure : undefined;
+    const data = await this.boutiqueService.toggleActive(+id, true, structureId);
+    return this.responseService.success('Boutique activée', data);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.boutiqueService.remove(+id);

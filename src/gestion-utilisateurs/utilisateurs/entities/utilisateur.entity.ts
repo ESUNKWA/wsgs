@@ -33,6 +33,9 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     @Column({ name: 'r_is_admin', default: false })
     is_admin!: boolean;
 
+    @Column({ name: 'r_peut_faire_retour', type: 'boolean', default: false, nullable: true })
+    peut_faire_retour!: boolean;
+
     @Column({ name: 'r_structure_id', nullable: true, type: 'integer' })
     structure_id!: number | null;
 

@@ -42,13 +42,14 @@ export class UtilisateursService {
     }
 
     const { profil, structure, ...userFlat } = user as any;
+    const safeFlat = { ...userFlat, peut_faire_retour: userFlat.peut_faire_retour ?? false };
     const tenantProfil = tenantProfilId ? { id: tenantProfilId } : null;
 
     const existing = await tenantRepo.findOne({ where: { telephone: user.telephone } });
     if (existing) {
-      await tenantRepo.save({ ...existing, ...userFlat, id: existing.id, profil: tenantProfil ?? existing.profil });
+      await tenantRepo.save({ ...existing, ...safeFlat, id: existing.id, profil: tenantProfil ?? existing.profil });
     } else {
-      await tenantRepo.save({ ...userFlat, profil: tenantProfil });
+      await tenantRepo.save({ ...safeFlat, profil: tenantProfil });
     }
   }
 
@@ -164,20 +165,31 @@ export class UtilisateursService {
     });
   }
 
-  async findAll(profilCode: string, boutique: string, structureId?: number): Promise<any[]> {
+  async findAll(profilCode: string, boutique: string, structureId?: number, telephone?: string): Promise<any[]> {
     let users: Utilisateur[];
 
     if (profilCode === 'super_admin') {
-      users = await this.utilisateurRepository.find({ order: { nom: 'ASC' } });
+      
+      users = telephone
+        ? await this.utilisateurRepository.find({ where: { telephone }, order: { nom: 'ASC' } })
+        : await this.utilisateurRepository.find({ order: { nom: 'ASC' } });
+       
     } else {
       const repo = this.tenantContext.hasContext()
         ? this.tenantContext.getDataSource().getRepository(Utilisateur)
         : this.utilisateurRepository;
 
-      if (['admin', 'responsable_structure'].includes(profilCode) && structureId) {
-        users = await repo.find({ where: { structure_id: structureId }, order: { nom: 'ASC' } });
+      if (telephone) {
+        users = await repo.find({ where: { telephone, structure_id: structureId }, order: { nom: 'ASC' } });
       } else {
-        users = await repo.find({ where: { boutique_id: +boutique, structure_id: structureId }, order: { nom: 'ASC' } });
+        const boutiqueId = boutique ? +boutique : NaN;
+        if (!isNaN(boutiqueId)) {
+          users = await repo.find({ where: { boutique_id: boutiqueId, structure_id: structureId }, order: { nom: 'ASC' } });
+        } else if (['admin', 'responsable_structure'].includes(profilCode) && structureId) {
+          users = await repo.find({ where: { structure_id: structureId }, order: { nom: 'ASC' } });
+        } else {
+          users = await repo.find({ where: { structure_id: structureId }, order: { nom: 'ASC' } });
+        }
       }
     }
 
@@ -238,9 +250,10 @@ export class UtilisateursService {
         (user as any).profil = { id: profilId };
       }
 
-      const saved = await this.utilisateurRepository.save(user);
-      await this.syncUserToTenant(saved);
-      const { mot_de_passe, ...result } = saved as any;
+      await this.utilisateurRepository.save(user);
+      const reloaded = await this.utilisateurRepository.findOne({ where: { id: user.id }, relations: ['profil'] });
+      await this.syncUserToTenant(reloaded!);
+      const { mot_de_passe, ...result } = reloaded as any;
       return result;
     } catch (error: any) {
       if (error instanceof NotFoundException) throw error;

@@ -46,4 +46,8 @@ export class Boutique {
 
     @Column({ name: 'r_gestion_caisse_activee', type: 'boolean', default: false })
     gestion_caisse_activee!: boolean;
+
+
+    @Column({ name: 'r_is_active', type: 'boolean', default: true })
+    is_active!: boolean;
 }

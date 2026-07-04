@@ -6,6 +6,7 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { TenantService } from 'src/tenant/tenant.service';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
+import { AbonnementService } from 'src/abonnement/abonnement.service';
 
 @Injectable()
 export class AuthenticationService {
@@ -14,6 +15,7 @@ export class AuthenticationService {
     private utulisateurService: UtilisateursService,
     private jwtService: JwtService,
     private readonly tenantService: TenantService,
+    private readonly abonnementService: AbonnementService,
   ) {}
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
@@ -110,11 +112,17 @@ export class AuthenticationService {
       expiresIn: process.env.JWT_TOKEN_EXPIRE || '1h',
     } as JwtSignOptions);
 
+    // Infos abonnement pour que le front affiche le statut / jours restants
+    const abonnement = structureId
+      ? await this.abonnementService.getAbonnement(structureId).catch(() => null)
+      : null;
+
     return {
       utilisateur: isManager
         ? { ...utilisateur, boutiques }
         : { ...utilisateur, boutique },
       access_token,
+      abonnement,
     };
   }
 

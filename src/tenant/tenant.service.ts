@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { TenantConfig } from './entities/tenant-config.entity';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { AbonnementService } from 'src/abonnement/abonnement.service';
 
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Produit } from 'src/config/produit/entities/produit.entity';
@@ -26,6 +27,8 @@ import { MouvementCaisse } from 'src/gestion-caisse/entities/mouvement-caisse.en
 import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { Profil } from 'src/gestion-utilisateurs/profils/entities/profil.entity';
+import { RetourVente } from 'src/gestion-ventes/retour-vente/entities/retour-vente.entity';
+import { DetailRetourVente } from 'src/gestion-ventes/retour-vente/entities/detail-retour-vente.entity';
 
 const PROFILS_SEED = [
   { code: 'admin',                 nom: 'administrateur',        description: 'administrateur' },
@@ -47,6 +50,7 @@ export const TENANT_ENTITIES = [
   CommandeClient, DetailCommandeClient,
   SessionCaisse, MouvementCaisse,
   Structure, Utilisateur, Profil,
+  RetourVente, DetailRetourVente,
 ];
 
 @Injectable()
@@ -58,6 +62,7 @@ export class TenantService {
     private readonly configRepo: Repository<TenantConfig>,
     @InjectDataSource()
     private readonly masterDs: DataSource,
+    private readonly abonnementService: AbonnementService,
   ) {}
 
   // ─── Accès DataSource tenant (utilisé par le middleware et les services) ────
@@ -83,13 +88,14 @@ export class TenantService {
       password: config.password,
       database: config.database,
       entities: TENANT_ENTITIES,
-      synchronize: true,
+      synchronize: false,
     });
 
     await ds.initialize();
     this.pool.set(structureId, ds);
     return ds;
   }
+
 
   // ─── Provisionnement ────────────────────────────────────────────────────────
 
@@ -201,13 +207,48 @@ export class TenantService {
     // ── Étape 6 : enregistrer le DataSource dans le pool ─────────────────────
     this.pool.set(dto.structureId, tenantDs);
 
+    // ── Étape 7 : démarrer automatiquement la période d'essai ────────────────
+    try {
+      await this.abonnementService.demarrerEssai(dto.structureId);
+    } catch {
+      // Ne pas bloquer le provisionnement si l'essai échoue (ex: déjà existant)
+    }
+
     delete (adminUser as any)?.mot_de_passe;
     return { config: savedConfig, admin: adminUser };
   }
 
   async reseedTenant(structureId: number): Promise<void> {
+    await this.destroyConnection(structureId);
     const tenantDs = await this.getDataSource(structureId);
+
+    // ALTER TYPE ADD VALUE ne peut pas s'exécuter dans une transaction (limitation PostgreSQL).
+    // On utilise un QueryRunner sans transaction pour ajouter la valeur 'retour' si absente.
+    const qr = tenantDs.createQueryRunner();
+    await qr.connect();
+    try {
+      await qr.query(`ALTER TYPE t_historique_stock_r_source_enum ADD VALUE IF NOT EXISTS 'retour'`);
+    } catch {
+      // L'enum n'existe pas encore → synchronize() la créera avec toutes ses valeurs
+    } finally {
+      await qr.release();
+    }
+
     await tenantDs.synchronize();
+  }
+
+  async reseedAll(): Promise<{ structureId: number; status: string }[]> {
+    const configs = await this.configRepo.find({ where: { isActive: true } });
+    const results: { structureId: number; status: string }[] = [];
+    for (const config of configs) {
+      try {
+        await this.reseedTenant(config.structureId);
+        results.push({ structureId: config.structureId, status: 'ok' });
+      } catch (e: any) {
+        results.push({ structureId: config.structureId, status: `erreur: ${e.message}` });
+      }
+    }
+    return results;
   }
 
   async getConfig(structureId: number): Promise<TenantConfig | null> {
@@ -216,6 +257,68 @@ export class TenantService {
 
   async findAll(): Promise<TenantConfig[]> {
     return this.configRepo.find({ order: { structureId: 'ASC' } });
+  }
+
+  /** Liste toutes les DBs tenant enrichies avec les infos de la structure (master DB).
+   *  Le mot de passe DB est masqué dans la réponse. */
+  async findAllWithStructure(): Promise<any[]> {
+    const configs = await this.configRepo.find({ order: { structureId: 'ASC' } });
+    const structures = await this.masterDs.getRepository(Structure).find();
+    const structureMap = new Map(structures.map(s => [s.id, s]));
+
+    return configs.map(({ password: _pwd, ...config }) => ({
+      ...config,
+      structure: structureMap.get(config.structureId) ?? null,
+    }));
+  }
+
+  /** Retourne la liste des tables d'un tenant (schéma public uniquement). */
+  async getTables(structureId: number): Promise<string[]> {
+    const ds = await this.getDataSource(structureId);
+    const rows: { table_name: string }[] = await ds.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+       ORDER BY table_name`,
+    );
+    return rows.map(r => r.table_name);
+  }
+
+  /** Retourne le contenu paginé d'une table tenant.
+   *  Le nom de table est validé contre information_schema pour éviter toute injection SQL. */
+  async getTableContent(
+    structureId: number,
+    tableName: string,
+    page = 1,
+    limit = 20,
+  ): Promise<any> {
+    const validTables = await this.getTables(structureId);
+    if (!validTables.includes(tableName)) {
+      throw new NotFoundException(`Table '${tableName}' introuvable dans cette base`);
+    }
+
+    const ds = await this.getDataSource(structureId);
+    const offset = (page - 1) * limit;
+
+    const [rows, countResult] = await Promise.all([
+      ds.query(`SELECT * FROM "${tableName}" ORDER BY id DESC LIMIT $1 OFFSET $2`, [limit, offset]),
+      ds.query(`SELECT COUNT(*)::int AS total FROM "${tableName}"`),
+    ]);
+
+    // Masquer les mots de passe si la table contient un champ r_mot_de_passe
+    const safeRows = rows.map((row: any) => {
+      const { r_mot_de_passe, mot_de_passe, ...rest } = row;
+      return rest;
+    });
+
+    return {
+      table: tableName,
+      total: countResult[0]?.total ?? 0,
+      page,
+      limit,
+      total_pages: Math.ceil((countResult[0]?.total ?? 0) / limit),
+      rows: safeRows,
+    };
   }
 
   async destroyConnection(structureId: number): Promise<void> {

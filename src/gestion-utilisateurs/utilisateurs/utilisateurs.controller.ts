@@ -35,10 +35,12 @@ export class UtilisateursController {
   @Get()
   async findAll(
     @Query('boutique') boutique: string,
+    @Query('telephone') telephone: string,
     @Req() req: Request,
   ): Promise<DataRequest> {
     const user = (req as any).user;
-    const data = await this.utilisateursService.findAll(user?.profil, boutique, user?.structureId);
+    console.log('User from request:', user); // Log the user object to see its structure
+    const data = await this.utilisateursService.findAll(user?.profil, boutique, user?.structureId, telephone);
     return this.responseService.success('Liste des utilisateurs', data);
   }
 
