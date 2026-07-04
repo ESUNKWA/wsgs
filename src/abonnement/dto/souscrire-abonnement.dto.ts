@@ -5,7 +5,7 @@ export class SouscrireAbonnementDto {
   @IsNumber()
   structureId: number;
 
-  @IsEnum(['3_mois', '6_mois', '1_an'])
+  @IsEnum(['1_mois', '3_mois', '6_mois', '1_an'])
   plan: PlanType;
 
   @IsOptional()

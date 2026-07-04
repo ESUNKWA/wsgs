@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { Abonnement, PlanAbonnement, StatutAbonnement } from './entities/abonnement.entity';
 import { PlanTarif, PlanType } from './entities/plan-tarif.entity';
 import { BoutiqueAbonnement } from './entities/boutique-abonnement.entity';
-import { ConfigTarif } from './entities/config-tarif.entity';
+import { ConfigTarif, TypeTarif } from './entities/config-tarif.entity';
 import { SouscrireAbonnementDto } from './dto/souscrire-abonnement.dto';
 import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 
@@ -22,6 +22,7 @@ function addMonths(date: Date, months: number): Date {
 }
 
 const DUREE_PLAN: Record<PlanType, number> = {
+  '1_mois': 1,
   '3_mois': 3,
   '6_mois': 6,
   '1_an':   12,
@@ -67,25 +68,32 @@ export class AbonnementService {
 
   // ─── Souscription ─────────────────────────────────────────────────────────
 
-  async souscrire(dto: SouscrireAbonnementDto): Promise<Abonnement> {
-    // Calcul automatique du montant si non fourni
+  async souscrire(dto: SouscrireAbonnementDto, isSuperAdmin = false): Promise<Abonnement> {
     const devis = await this.calculerDevisRenouvellement(dto.structureId, dto.plan);
 
-    const courant = await this.abonnementRepo.findOne({
-      where: { structureId: dto.structureId },
-      order: { date_fin: 'DESC' },
-    });
     const maintenant = new Date();
-    const date_debut = courant?.statut === 'actif' && courant.date_fin > maintenant
-      ? courant.date_fin
-      : maintenant;
+
+    // Si super_admin : abonnement actif immédiatement avec dates calculées
+    // Sinon : statut en_attente, dates provisoires (recalculées à la validation)
+    const statut: StatutAbonnement = isSuperAdmin ? 'actif' : 'en_attente';
+
+    let date_debut = maintenant;
+    if (isSuperAdmin) {
+      const courant = await this.abonnementRepo.findOne({
+        where: { structureId: dto.structureId },
+        order: { date_fin: 'DESC' },
+      });
+      if (courant?.statut === 'actif' && courant.date_fin > maintenant) {
+        date_debut = courant.date_fin; // prolongation
+      }
+    }
 
     const abo = this.abonnementRepo.create({
       structureId:  dto.structureId,
       plan:         dto.plan as PlanAbonnement,
       date_debut,
       date_fin:     addMonths(date_debut, DUREE_PLAN[dto.plan]),
-      statut:       'actif',
+      statut,
       montant:      dto.montant ?? devis.total,
       devise:       devis.devise,
       notes:        dto.notes ?? null,
@@ -96,6 +104,29 @@ export class AbonnementService {
     return { ...saved, devis } as any;
   }
 
+  // ─── Validation super_admin ───────────────────────────────────────────────
+
+  async validerAbonnement(id: number): Promise<Abonnement> {
+    const abo = await this.abonnementRepo.findOne({ where: { id } });
+    if (!abo) throw new NotFoundException('Abonnement introuvable');
+    if (abo.statut !== 'en_attente') {
+      throw new BadRequestException(`Cet abonnement n'est pas en attente de validation (statut actuel : ${abo.statut})`);
+    }
+
+    // Recalcul des dates depuis le moment de la validation
+    const maintenant = new Date();
+    const courant = await this.abonnementRepo.findOne({
+      where: { structureId: abo.structureId, statut: 'actif' },
+      order: { date_fin: 'DESC' },
+    });
+    const date_debut = courant && courant.date_fin > maintenant ? courant.date_fin : maintenant;
+    const date_fin   = addMonths(date_debut, DUREE_PLAN[abo.plan as PlanType]);
+
+    await this.abonnementRepo.update(id, { statut: 'actif', date_debut, date_fin });
+    this.invalidateCache(abo.structureId);
+    return { ...abo, statut: 'actif', date_debut, date_fin };
+  }
+
   // ─── Devis de renouvellement ──────────────────────────────────────────────
 
   async calculerDevisRenouvellement(structureId: number, plan: PlanType): Promise<{
@@ -103,6 +134,7 @@ export class AbonnementService {
     prix_base: number;
     boutiques_incluses: number;
     boutiques_supplementaires: number;
+    config_boutique: { valeur: number; type: TypeTarif };
     prix_boutique_supplementaire: number;
     montant_boutiques_supplementaires: number;
     total: number;
@@ -116,8 +148,13 @@ export class AbonnementService {
     const boutiquesExtra = await this.boutiqueAboRepo.find({
       where: { structureId, est_active: true },
     });
-    const nbExtra   = boutiquesExtra.length;
-    const prixExtra = await this.getPrixBoutiqueSupplementaire();
+    const nbExtra = boutiquesExtra.length;
+
+    const config = await this.getConfigBoutiqueSupplementaire();
+    // Si pourcentage : prix par boutique = % du plan de base
+    const prixExtra = config.type === 'pourcentage'
+      ? Math.round(prixBase * (config.valeur / 100))
+      : config.valeur;
     const montantExtra = nbExtra * prixExtra;
 
     return {
@@ -125,6 +162,7 @@ export class AbonnementService {
       prix_base: prixBase,
       boutiques_incluses: 1,
       boutiques_supplementaires: nbExtra,
+      config_boutique: { valeur: config.valeur, type: config.type },
       prix_boutique_supplementaire: prixExtra,
       montant_boutiques_supplementaires: montantExtra,
       total: prixBase + montantExtra,
@@ -221,27 +259,53 @@ export class AbonnementService {
     return { ajoutees, deja_presentes, boutiques: boutiquesFacturees };
   }
 
-  // ─── Configuration prix boutique supplémentaire ───────────────────────────
+  // ─── Configuration boutique supplémentaire ───────────────────────────────
 
-  async getPrixBoutiqueSupplementaire(): Promise<number> {
+  async getConfigBoutiqueSupplementaire(): Promise<{ valeur: number; type: TypeTarif; devise: string }> {
     const config = await this.configTarifRepo.findOne({ where: { cle: CLE_PRIX_BOUTIQUE } });
-    return config?.valeur ?? 0;
+    return {
+      valeur: config?.valeur ?? 0,
+      type: (config?.type ?? 'montant') as TypeTarif,
+      devise: config?.devise ?? 'XOF',
+    };
   }
 
-  async setPrixBoutiqueSupplementaire(montant: number, devise = 'XOF'): Promise<ConfigTarif> {
+  async setConfigBoutiqueSupplementaire(
+    valeur: number,
+    type: TypeTarif = 'montant',
+    devise = 'XOF',
+  ): Promise<ConfigTarif> {
+    if (type === 'pourcentage' && (valeur < 0 || valeur > 100)) {
+      throw new Error('Le pourcentage doit être compris entre 0 et 100');
+    }
+    const description = type === 'pourcentage'
+      ? `${valeur}% du plan de base par boutique supplémentaire`
+      : 'Montant fixe par boutique supplémentaire';
+
     const existing = await this.configTarifRepo.findOne({ where: { cle: CLE_PRIX_BOUTIQUE } });
     if (existing) {
-      await this.configTarifRepo.update(existing.id, { valeur: montant, devise });
-      return { ...existing, valeur: montant, devise };
+      await this.configTarifRepo.update(existing.id, { valeur, type, devise, description });
+      return { ...existing, valeur, type, devise, description };
     }
     return this.configTarifRepo.save(
-      this.configTarifRepo.create({
-        cle: CLE_PRIX_BOUTIQUE,
-        valeur: montant,
-        devise,
-        description: 'Prix mensuel par boutique supplémentaire',
-      }),
+      this.configTarifRepo.create({ cle: CLE_PRIX_BOUTIQUE, valeur, type, devise, description }),
     );
+  }
+
+  /** @deprecated Utiliser getConfigBoutiqueSupplementaire() */
+  async getPrixBoutiqueSupplementaire(): Promise<number> {
+    const config = await this.getConfigBoutiqueSupplementaire();
+    return config.valeur;
+  }
+
+  // ─── Période d'essai ─────────────────────────────────────────────────────
+
+  async isEnEssai(structureId: number): Promise<boolean> {
+    const abo = await this.abonnementRepo.findOne({
+      where: { structureId },
+      order: { date_fin: 'DESC' },
+    });
+    return !!abo && abo.plan === 'essai' && abo.statut === 'actif';
   }
 
   // ─── Statut (utilisé par le guard — avec cache) ───────────────────────────
@@ -250,6 +314,7 @@ export class AbonnementService {
     const cached = this.cache.get(structureId);
     if (cached && Date.now() - cached.cachedAt < this.CACHE_TTL) return cached.statut;
 
+    // Chercher d'abord un abonnement actif, sinon le plus récent
     const abo = await this.abonnementRepo.findOne({
       where: { structureId },
       order: { date_fin: 'DESC' },
@@ -257,6 +322,7 @@ export class AbonnementService {
 
     if (!abo) return this.setCache(structureId, 'aucun');
     if (abo.statut === 'suspendu') return this.setCache(structureId, 'suspendu');
+    if (abo.statut === 'en_attente') return this.setCache(structureId, 'en_attente');
 
     if (abo.date_fin < new Date() && abo.statut === 'actif') {
       await this.abonnementRepo.update(abo.id, { statut: 'expire' });
@@ -296,8 +362,13 @@ export class AbonnementService {
 
     const structure = await this.structureRepo.findOne({ where: { id: abo.structureId } });
     const boutiquesExtra = await this.boutiqueAboRepo.find({ where: { structureId: abo.structureId }, order: { date_ajout: 'ASC' } });
-    const prixExtra = await this.getPrixBoutiqueSupplementaire();
     const nbExtra = boutiquesExtra.filter(b => b.est_active).length;
+    const configExtra = await this.getConfigBoutiqueSupplementaire();
+    // Reconstitue le plan pour recalculer le vrai prix unitaire au moment de la souscription
+    const planTarif = await this.planTarifRepo.findOne({ where: { plan: abo.plan as any } });
+    const prixExtra = configExtra.type === 'pourcentage'
+      ? Math.round((planTarif?.montant ?? 0) * (configExtra.valeur / 100))
+      : configExtra.valeur;
 
     const reference = `FACT-${String(abo.structureId).padStart(4, '0')}-${String(abo.id).padStart(6, '0')}`;
 
@@ -320,6 +391,7 @@ export class AbonnementService {
           boutiqueNom: b.boutiqueNom,
           est_active: b.est_active,
           prix_unitaire: prixExtra,
+          config: { valeur: configExtra.valeur, type: configExtra.type },
           devise: abo.devise,
         })),
         nb_boutiques_facturees: nbExtra,
@@ -333,11 +405,16 @@ export class AbonnementService {
   buildFactureHtml(facture: any): string {
     const lignesBoutiques = facture.detail.boutiques_supplementaires
       .filter((b: any) => b.est_active)
-      .map((b: any) => `
+      .map((b: any) => {
+        const label = b.config?.type === 'pourcentage'
+          ? `Boutique supplémentaire — ${b.boutiqueNom} (${b.config.valeur}% du plan)`
+          : `Boutique supplémentaire — ${b.boutiqueNom}`;
+        return `
         <tr>
-          <td>Boutique supplémentaire — ${b.boutiqueNom}</td>
+          <td>${label}</td>
           <td style="text-align:right">${b.prix_unitaire.toLocaleString()} ${b.devise}</td>
-        </tr>`)
+        </tr>`;
+      })
       .join('');
 
     return `<!DOCTYPE html>

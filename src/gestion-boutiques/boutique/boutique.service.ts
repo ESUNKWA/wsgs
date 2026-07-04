@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateBoutiqueDto } from './dto/create-boutique.dto';
 import { UpdateBoutiqueDto } from './dto/update-boutique.dto';
 import { Boutique } from './entities/boutique.entity';
@@ -38,6 +38,16 @@ export class BoutiqueService {
         ? await repo.count({ where: { structure_id: structureId, is_active: true } })
         : 0;
 
+      // Bloquer l'ajout d'une 2ème boutique si la structure est en période d'essai
+      if (structureId && nbExistantes >= 1) {
+        const enEssai = await this.abonnementService.isEnEssai(structureId);
+        if (enEssai) {
+          throw new ForbiddenException(
+            "La période d'essai est limitée à une seule boutique. Veuillez souscrire à un plan payant pour ajouter des boutiques supplémentaires.",
+          );
+        }
+      }
+
       const data = repo.create({
         ...rest,
         structure_id: structureId,
@@ -46,7 +56,7 @@ export class BoutiqueService {
       });
       const saved = await repo.save(data) as any;
 
-      // Si ce n'est pas la 1ère boutique, notifier l'abonnement (facturation)
+      // Notifier l'abonnement si c'est une boutique supplémentaire (plan payant garanti ici)
       if (structureId && nbExistantes >= 1) {
         await this.abonnementService.notifierAjoutBoutique(structureId, saved.id, saved.nom).catch(() => null);
       }

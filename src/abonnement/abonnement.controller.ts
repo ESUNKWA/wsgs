@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AbonnementService } from './abonnement.service';
 import { SouscrireAbonnementDto } from './dto/souscrire-abonnement.dto';
 import { ResponseService } from 'src/services/response/response.service';
 import { PlanType } from './entities/plan-tarif.entity';
+import { TypeTarif } from './entities/config-tarif.entity';
 import { TenantService } from 'src/tenant/tenant.service';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { PdfService } from 'src/documents/pdf/pdf.service';
@@ -58,9 +59,19 @@ export class AbonnementController {
   }
 
   @Post('souscrire')
-  async souscrire(@Body() dto: SouscrireAbonnementDto) {
-    const data = await this.abonnementService.souscrire(dto);
-    return this.responseService.success('Souscription enregistrée', data);
+  async souscrire(@Body() dto: SouscrireAbonnementDto, @Req() req: Request) {
+    const isSuperAdmin = (req as any).user?.is_super_admin === true;
+    const data = await this.abonnementService.souscrire(dto, isSuperAdmin);
+    const message = isSuperAdmin
+      ? 'Souscription enregistrée et activée'
+      : 'Demande de souscription envoyée — en attente de validation par le super administrateur';
+    return this.responseService.success(message, data);
+  }
+
+  @Patch(':id/valider')
+  async valider(@Param('id') id: string) {
+    const data = await this.abonnementService.validerAbonnement(+id);
+    return this.responseService.success('Abonnement validé et activé', data);
   }
 
   @Patch(':id/suspendre')
@@ -158,17 +169,26 @@ export class AbonnementController {
     return (res as any).json({ status: 'success', message: 'Facture PDF générée', data: result });
   }
 
-  // ─── Config prix boutique supplémentaire ─────────────────────────────────
+  // ─── Config boutique supplémentaire ──────────────────────────────────────
 
   @Get('config/prix-boutique')
-  async getPrixBoutiqueSupplementaire() {
-    const valeur = await this.abonnementService.getPrixBoutiqueSupplementaire();
-    return this.responseService.success('Prix boutique supplémentaire', { valeur, devise: 'XOF' });
+  async getConfigBoutiqueSupplementaire() {
+    const data = await this.abonnementService.getConfigBoutiqueSupplementaire();
+    return this.responseService.success('Configuration boutique supplémentaire', data);
   }
 
   @Post('config/prix-boutique')
-  async setPrixBoutiqueSupplementaire(@Body() body: { montant: number; devise?: string }) {
-    const data = await this.abonnementService.setPrixBoutiqueSupplementaire(body.montant, body.devise);
-    return this.responseService.success('Prix mis à jour', data);
+  async setConfigBoutiqueSupplementaire(
+    @Body() body: { valeur: number; type?: TypeTarif; devise?: string },
+  ) {
+    if (body.valeur === undefined || body.valeur === null) {
+      throw new BadRequestException('Le champ valeur est requis');
+    }
+    const data = await this.abonnementService.setConfigBoutiqueSupplementaire(
+      body.valeur,
+      body.type ?? 'montant',
+      body.devise,
+    );
+    return this.responseService.success('Configuration mise à jour', data);
   }
 }

@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-export type PlanType = '3_mois' | '6_mois' | '1_an';
+export type PlanType = '1_mois' | '3_mois' | '6_mois' | '1_an';
 
 @Entity('plan_tarifs')
 export class PlanTarif {

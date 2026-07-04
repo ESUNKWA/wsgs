@@ -1,8 +1,8 @@
 import { defaultDateGeneratorHelper } from 'src/common/helpers/default-date-genarate';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-export type PlanAbonnement = 'essai' | '3_mois' | '6_mois' | '1_an';
-export type StatutAbonnement = 'actif' | 'expire' | 'suspendu';
+export type PlanAbonnement = 'essai' | '1_mois' | '3_mois' | '6_mois' | '1_an';
+export type StatutAbonnement = 'en_attente' | 'actif' | 'expire' | 'suspendu';
 
 @Entity('abonnements')
 export class Abonnement extends defaultDateGeneratorHelper {
@@ -21,7 +21,7 @@ export class Abonnement extends defaultDateGeneratorHelper {
   @Column({ name: 'date_fin', type: 'timestamp' })
   date_fin: Date;
 
-  @Column({ name: 'statut', type: 'varchar', length: 10, default: 'actif' })
+  @Column({ name: 'statut', type: 'varchar', length: 15, default: 'actif' })
   statut: StatutAbonnement;
 
   @Column({ name: 'montant', type: 'real', default: 0 })
