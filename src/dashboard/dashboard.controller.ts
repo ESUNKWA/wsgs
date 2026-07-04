@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, BadRequestException } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { CreateDashboardDto } from './dto/create-dashboard.dto';
 import { UpdateDashboardDto } from './dto/update-dashboard.dto';
@@ -8,7 +8,9 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get()
-  async getStatsBoutique(@Query('boutique') boutiqueId: number) {
+  async getStatsBoutique(@Query('boutique') boutique: string) {
+    const boutiqueId = parseInt(boutique, 10);
+    if (!boutique || isNaN(boutiqueId)) throw new BadRequestException('Paramètre boutique requis');
     return await this.dashboardService.getDashboardStats(boutiqueId);
   }
 
@@ -17,7 +19,9 @@ export class DashboardController {
     @Query('boutique') boutiqueId: string,
     @Query('caissier') caissier: string,
   ) {
-    return await this.dashboardService.getDashboardCaissier(+boutiqueId, caissier);
+    const id = parseInt(boutiqueId, 10);
+    if (!boutiqueId || isNaN(id)) throw new BadRequestException('Paramètre boutique requis');
+    return await this.dashboardService.getDashboardCaissier(id, caissier);
   }
 
   @Post()
