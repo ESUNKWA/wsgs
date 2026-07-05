@@ -432,6 +432,115 @@ export class DashboardService {
     };
   }
 
+  async getRecette(boutiqueId: number, date_debut?: string, date_fin?: string, page = 1, limit = 20) {
+    const ds = this.dataSource;
+
+    // Build date filters (conditions WITHOUT table alias — for direct t_ventes queries)
+    const conditions: string[] = [`"boutiqueId" = $1`, `deleted_at IS NULL`];
+    const params: any[] = [boutiqueId];
+
+    if (date_debut) {
+      params.push(new Date(date_debut));
+      conditions.push(`created_at >= $${params.length}`);
+    }
+    if (date_fin) {
+      const fin = new Date(date_fin);
+      fin.setHours(23, 59, 59, 999);
+      params.push(fin);
+      conditions.push(`created_at <= $${params.length}`);
+    }
+
+    const where = conditions.join(' AND ');
+
+    // Build same conditions prefixed with alias "v." for JOIN queries
+    const vConditions: string[] = [`v."boutiqueId" = $1`, `v.deleted_at IS NULL`];
+    if (date_debut) vConditions.push(`v.created_at >= $2`);
+    if (date_fin)   vConditions.push(`v.created_at <= $${date_debut ? 3 : 2}`);
+    const vWhere = vConditions.join(' AND ');
+
+    // Summary
+    const [summary] = await ds.query(
+      `SELECT
+         COUNT(*)::int                                                                                   AS nb_ventes,
+         COALESCE(SUM(COALESCE(NULLIF(r_montant_total_apres_remise, 0), r_montant_total)), 0)::numeric   AS recette_totale,
+         COALESCE(SUM(r_remise), 0)::numeric                                                            AS total_remises
+       FROM t_ventes
+       WHERE ${where}`,
+      params,
+    );
+
+    // Bénéfice estimé
+    const [benef] = await ds.query(
+      `SELECT COALESCE(SUM((dv.r_prix_unitaire_vente - p.r_prix_achat) * dv.r_quantite), 0)::numeric AS benefice
+       FROM t_detail_ventes dv
+       JOIN t_produits p ON p.id = dv."produitId"
+       JOIN t_ventes   v ON v.id = dv."venteId"
+       WHERE ${vWhere}`,
+      params,
+    );
+
+    // Par mode de paiement
+    const modeRows = await ds.query(
+      `SELECT
+         r_mode_paiement                                                                              AS mode,
+         COALESCE(SUM(COALESCE(NULLIF(r_montant_total_apres_remise, 0), r_montant_total)), 0)::numeric AS total
+       FROM t_ventes
+       WHERE ${where}
+       GROUP BY r_mode_paiement`,
+      params,
+    );
+    const par_mode_paiement = Object.fromEntries(modeRows.map((r: any) => [r.mode ?? 'non_renseigne', Number(r.total)]));
+
+    // Paginated detail
+    const skip = (page - 1) * limit;
+    const detailParams = [...params, limit, skip];
+    const ventes = await ds.query(
+      `SELECT
+         v.id,
+         v.r_reference                                                                           AS reference,
+         v.created_at                                                                            AS date_vente,
+         v.r_mode_paiement                                                                       AS mode_paiement,
+         COALESCE(NULLIF(v.r_montant_total_apres_remise, 0), v.r_montant_total)::numeric         AS montant,
+         COALESCE(v.r_remise, 0)::numeric                                                       AS remise,
+         CONCAT(u.r_nom, ' ', u.r_prenoms)                                                      AS caissier,
+         CONCAT(c.r_nom, ' ', c.r_prenoms)                                                      AS client,
+         c.r_telephone                                                                           AS client_telephone,
+         (
+           SELECT json_agg(json_build_object(
+             'produit_id', p.id,
+             'nom',         p.r_nom,
+             'quantite',    dv.r_quantite,
+             'prix_unitaire', dv.r_prix_unitaire_vente,
+             'sous_total',  (dv.r_quantite * dv.r_prix_unitaire_vente)
+           ) ORDER BY dv.id)
+           FROM t_detail_ventes dv
+           JOIN t_produits p ON p.id = dv."produitId"
+           WHERE dv."venteId" = v.id
+         ) AS lignes
+       FROM t_ventes v
+       LEFT JOIN utilisateurs u ON u.id = v."userId"
+       LEFT JOIN t_clients    c ON c.id = v."clientId"
+       WHERE ${vWhere}
+       ORDER BY v.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      detailParams,
+    );
+
+    const total = summary.nb_ventes;
+    return {
+      recette_totale:    Number(summary.recette_totale),
+      nb_ventes:         summary.nb_ventes,
+      total_remises:     Number(summary.total_remises),
+      benefice_estime:   Number(benef.benefice),
+      par_mode_paiement,
+      ventes,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   create(createDashboardDto: CreateDashboardDto) {
     return 'This action adds a new dashboard';
   }

@@ -24,6 +24,25 @@ export class DashboardController {
     return await this.dashboardService.getDashboardCaissier(id, caissier);
   }
 
+  @Get('recette')
+  async getRecette(
+    @Query('boutique')    boutique: string,
+    @Query('date_debut')  date_debut?: string,
+    @Query('date_fin')    date_fin?: string,
+    @Query('page')        page?: string,
+    @Query('limit')       limit?: string,
+  ) {
+    const boutiqueId = parseInt(boutique, 10);
+    if (!boutique || isNaN(boutiqueId)) throw new BadRequestException('Paramètre boutique requis');
+    return this.dashboardService.getRecette(
+      boutiqueId,
+      date_debut,
+      date_fin,
+      page  ? +page  : 1,
+      limit ? +limit : 20,
+    );
+  }
+
   @Post()
   create(@Body() createDashboardDto: CreateDashboardDto) {
     return this.dashboardService.create(createDashboardDto);

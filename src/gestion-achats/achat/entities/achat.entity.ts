@@ -6,7 +6,7 @@ import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/hi
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 import { Utilisateur } from "src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity";
 
-export type ModePaiement = "espece" | "carte" | "mobile_money" | "credit" | "mixte";
+export type ModePaiement = "espece" | "carte" | "credit" | "mixte" | "orange_money" | "wave" | "mtn_money" | "moov_money" | "dajmo";
 
 @Entity('t_achats')
 export class Achat extends defaultDateGeneratorHelper {
@@ -24,12 +24,7 @@ export class Achat extends defaultDateGeneratorHelper {
     @Column({name: 'r_date_achat', nullable: true, type: 'timestamp'})
     date_achat: Date;
 
-    @Column({
-        name: 'r_mode_paiement',
-        type: "enum",
-        enum: ["espece", "carte", "mobile_money", "credit", "mixte"],
-        default: "espece"}
-    )
+    @Column({ name: 'r_mode_paiement', type: 'character varying', length: 30, default: 'espece' })
     mode_paiement: ModePaiement;
 
     @Column({name: 'r_statut', nullable: true, type: 'character varying', length: 10})

@@ -11,9 +11,10 @@ import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/util
 import { ProfilsService } from 'src/gestion-utilisateurs/profils/profils.service';
 import { Profil } from 'src/gestion-utilisateurs/profils/entities/profil.entity';
 import { SourceResolverService } from './SourceResolverService';
+import { PdfModule } from 'src/documents/pdf/pdf.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Utilisateur, Profil])],
+  imports: [TypeOrmModule.forFeature([Utilisateur, Profil]), PdfModule],
   controllers: [OllamaController],
   providers: [
     OllamaService, ProduitService, VenteService,

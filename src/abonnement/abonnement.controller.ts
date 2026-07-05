@@ -163,10 +163,14 @@ export class AbonnementController {
     @Res() res: Response,
   ) {
     const facture = await this.abonnementService.getFacture(+abonnementId);
-    const html = this.abonnementService.buildFactureHtml(facture);
+    const html    = this.abonnementService.buildFactureHtml(facture);
     const fileName = `facture-${facture.reference}.pdf`;
-    const result = await this.pdfService.generatePdf(html, fileName);
-    return (res as any).json({ status: 'success', message: 'Facture PDF générée', data: result });
+    const buffer  = await this.pdfService.generatePdfBuffer(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   }
 
   // ─── Config boutique supplémentaire ──────────────────────────────────────

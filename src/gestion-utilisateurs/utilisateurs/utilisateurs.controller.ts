@@ -39,7 +39,6 @@ export class UtilisateursController {
     @Req() req: Request,
   ): Promise<DataRequest> {
     const user = (req as any).user;
-    console.log('User from request:', user); // Log the user object to see its structure
     const data = await this.utilisateursService.findAll(user?.profil, boutique, user?.structureId, telephone);
     return this.responseService.success('Liste des utilisateurs', data);
   }

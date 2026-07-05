@@ -43,6 +43,7 @@ import { ConfigTarif } from './abonnement/entities/config-tarif.entity';
 import { AbonnementModule } from './abonnement/abonnement.module';
 import { AbonnementGuard } from './abonnement/guards/abonnement.guard';
 import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.mo
     AiModule,
     AbonnementModule,
     RetourVenteModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [

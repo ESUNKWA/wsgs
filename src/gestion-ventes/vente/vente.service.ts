@@ -12,18 +12,23 @@ import { SessionCaisse } from 'src/gestion-caisse/entities/session-caisse.entity
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { EventsService } from 'src/events/events.service';
 
 @Injectable()
 export class VenteService {
 
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   private get dataSource() { return this.tenantContext.getDataSource(); }
   private get venteRepository() { return this.dataSource.getRepository(Vente); }
 
   async create(createVenteDto: CreateVenteDto): Promise<any> {
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      const boutiqueId = (createVenteDto.boutique as any)?.id ?? createVenteDto.boutique;
+      const result = await this.dataSource.transaction(async (manager) => {
 
         let registerClient: Client;
         if (createVenteDto.clientdata?.telephone) {
@@ -113,6 +118,9 @@ export class VenteService {
 
         return { idVente: venteSauvegarde.id };
       });
+      // Notifier le dashboard en temps réel après commit de la transaction
+      this.eventsService.emit(+boutiqueId, 'vente.created');
+      return result;
     } catch (error: any) {
       throw new InternalServerErrorException(error.message);
     }
@@ -178,22 +186,39 @@ export class VenteService {
   async update(id: number, updateVenteDto: any): Promise<Vente> {
     try {
       return await this.dataSource.transaction(async (manager) => {
+        // Résolution du caissier par téléphone
         const telephone = String(updateVenteDto.user ?? '').trim();
         let tenantUser: Utilisateur | null = null;
         if (telephone) {
           tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
         }
 
-        if (updateVenteDto.client?.id) {
-          const client = await manager.preload(Client, {
-            id: updateVenteDto.client.id,
-            ...updateVenteDto.client,
-          });
-          if (client) await manager.save(client);
+        // Résolution / création du client
+        let resolvedClient: Client | null = null;
+        const clientdata = updateVenteDto.clientdata ?? updateVenteDto.client;
+        if (clientdata?.telephone) {
+          resolvedClient = await manager.findOne(Client, { where: { telephone: clientdata.telephone } });
+          if (!resolvedClient) {
+            resolvedClient = await manager.save(manager.create(Client, clientdata));
+          }
+        } else if (clientdata?.id) {
+          const cl = await manager.preload(Client, { id: clientdata.id, ...clientdata });
+          if (cl) resolvedClient = await manager.save(cl);
         }
 
-        const vente = await manager.preload(Vente, { id, ...updateVenteDto });
+        // Séparer les champs scalaires des relations pour éviter les violations FK
+        const { user: _u, boutique, session_caisse, client: _c, clientdata: _cd, detail_vente, ...scalarFields } = updateVenteDto;
+        const boutiqueId = typeof boutique === 'object' ? boutique?.id : boutique;
+        const sessionId  = typeof session_caisse === 'object' ? session_caisse?.id : session_caisse;
+
+        const vente = await manager.preload(Vente, { id, ...scalarFields });
         if (!vente) throw new Error('Vente introuvable');
+
+        // Affecter les relations résolues
+        if (tenantUser)     vente.user          = tenantUser;
+        if (boutiqueId)     vente.boutique       = { id: boutiqueId } as any;
+        if (sessionId)      vente.session_caisse = { id: sessionId } as any;
+        if (resolvedClient) vente.client         = resolvedClient;
 
         const oldLines = await manager.find(DetailVente, {
           where: { vente: { id } },
@@ -212,7 +237,7 @@ export class VenteService {
         await manager.delete(DetailVente, { vente: vente.id });
         await manager.delete(HistoriqueStock, { vente: vente.id });
 
-        const lignes: DetailVente[] = updateVenteDto.detail_vente.map((ligne: any) => {
+        const lignes: DetailVente[] = detail_vente.map((ligne: any) => {
           const l = new DetailVente();
           l.produit = ligne.produit;
           l.quantite = ligne.quantite;
@@ -224,10 +249,10 @@ export class VenteService {
         await manager.save(Vente, vente);
         await manager.save(DetailVente, lignes);
 
-        const produitsIds = updateVenteDto.detail_vente.map((l: any) => l.produit);
+        const produitsIds = detail_vente.map((l: any) => l.produit);
         const produits = await manager.findBy(Produit, { id: In(produitsIds) });
 
-        const lignesHistorik = updateVenteDto.detail_vente.map((ligne: any) => {
+        const lignesHistorik = detail_vente.map((ligne: any) => {
           const produit = produits.find((p) => p.id === ligne.produit);
           const stock_avant = produit?.stock_disponible ?? 0;
           return manager.create(HistoriqueStock, {
@@ -244,7 +269,7 @@ export class VenteService {
         await manager.save(lignesHistorik);
 
         for (const produit of produits) {
-          const ligne = updateVenteDto.detail_vente.find((l: any) => l.produit === produit.id);
+          const ligne = detail_vente.find((l: any) => l.produit === produit.id);
           if (ligne) produit.stock_disponible -= ligne.quantite;
         }
         await manager.save(Produit, produits);

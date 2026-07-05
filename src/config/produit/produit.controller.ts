@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ProduitService } from './produit.service';
 import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
@@ -32,6 +33,21 @@ export class ProduitController {
   async scan(@Param('code') code: string, @Query('boutique') boutique: string): Promise<DataRequest> {
     const data = await this.produitService.findByCodeBarre(code, +boutique);
     return this.responseService.success('Produit trouvé', data);
+  }
+
+  @Get(':id/etiquette')
+  async etiquette(
+    @Param('id') id: string,
+    @Query('copies') copies: string,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.produitService.generateEtiquette(+id, copies ? +copies : 1);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="etiquette-${id}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   @Get(':id')

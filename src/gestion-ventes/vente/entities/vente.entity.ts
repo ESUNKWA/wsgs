@@ -18,12 +18,7 @@ export class Vente extends defaultDateGeneratorHelper {
     @Column({name: 'r_reference', type: 'character varying', length: 20, unique: false})
     reference: string;
 
-    @Column({
-        name: 'r_mode_paiement',
-        type: "enum",
-        enum: ["espece", "carte", "mobile_money", "credit", "mixte"],
-        default: "espece"}
-    )
+    @Column({ name: 'r_mode_paiement', type: 'character varying', length: 30, default: 'espece' })
     mode_paiement: ModePaiement;
 
     @Column({name: 'r_statut', nullable: true, type: 'character varying', length: 10})

@@ -5,12 +5,17 @@ import { Produit } from './entities/produit.entity';
 import { Categorie } from 'src/config/categorie/entities/categorie.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
+import { BarcodeHelper } from 'src/common/helpers/barcode.helper';
+import { PdfService } from 'src/documents/pdf/pdf.service';
 import * as XLSX from 'xlsx';
 
 @Injectable()
 export class ProduitService {
 
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   private get produitRepository() {
     return this.tenantContext.getDataSource().getRepository(Produit);
@@ -26,6 +31,7 @@ export class ProduitService {
       const structureId = this.tenantContext.getStructureId();
       const produit = this.produitRepository.create({
         ...createProduitDto,
+        code_barre: createProduitDto.code_barre || BarcodeHelper.generateEan13(structureId ?? 0),
         image: file ? buildTenantFilePath(structureId, 'produits', file.filename) : null,
       });
       return await this.produitRepository.save(produit);
@@ -90,6 +96,55 @@ export class ProduitService {
 
   async remove(id: number) {
     return await this.produitRepository.softDelete(id);
+  }
+
+  async generateEtiquette(id: number, copies = 1): Promise<Buffer> {
+    const produit = await this.produitRepository.findOne({ where: { id } });
+    if (!produit) throw new NotFoundException('Produit inexistant');
+
+    if (!produit.code_barre) {
+      const structureId = this.tenantContext.getStructureId();
+      produit.code_barre = BarcodeHelper.generateEan13(structureId ?? 0);
+      await this.produitRepository.save(produit);
+    }
+
+    const barcodeImg = await BarcodeHelper.toBase64Png(produit.code_barre);
+    const prix = produit.prix_vente ? `${Number(produit.prix_vente).toLocaleString('fr-FR')} FCFA` : '';
+
+    const label = `
+      <div class="label">
+        <p class="nom">${produit.nom}</p>
+        <img src="${barcodeImg}" alt="barcode" />
+        <p class="code">${produit.code_barre}</p>
+        ${prix ? `<p class="prix">${prix}</p>` : ''}
+      </div>`;
+
+    const labelRepeat = Array(copies).fill(label).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; background: #fff; }
+  .grid { display: flex; flex-wrap: wrap; gap: 2mm; padding: 4mm; }
+  .label {
+    width: 50mm; border: 1px solid #ccc; border-radius: 2mm;
+    padding: 2mm; text-align: center; page-break-inside: avoid;
+  }
+  .nom  { font-size: 9pt; font-weight: bold; margin-bottom: 1mm; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  img   { width: 100%; max-height: 18mm; object-fit: contain; }
+  .code { font-size: 7pt; color: #555; margin-top: 1mm; letter-spacing: 1px; }
+  .prix { font-size: 10pt; font-weight: bold; color: #1a1a1a; margin-top: 1mm; }
+</style>
+</head>
+<body>
+  <div class="grid">${labelRepeat}</div>
+</body>
+</html>`;
+
+    return this.pdfService.generatePdfBuffer(html);
   }
 
   async importFromFile(
