@@ -44,6 +44,8 @@ import { AbonnementModule } from './abonnement/abonnement.module';
 import { AbonnementGuard } from './abonnement/guards/abonnement.guard';
 import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.module';
 import { EventsModule } from './events/events.module';
+import { InscriptionModule } from './inscription/inscription.module';
+import { DemandeInscription } from './inscription/entities/demande-inscription.entity';
 
 @Module({
   imports: [
@@ -61,7 +63,7 @@ import { EventsModule } from './events/events.module';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, DemandeInscription],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -91,6 +93,7 @@ import { EventsModule } from './events/events.module';
     AbonnementModule,
     RetourVenteModule,
     EventsModule,
+    InscriptionModule,
   ],
   controllers: [AppController],
   providers: [
