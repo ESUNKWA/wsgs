@@ -65,20 +65,31 @@ export class DevisService {
     }
   }
 
-  async findAll(query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(query: { boutique: number; page?: number; limit?: number; date_debut?: string; date_fin?: string }) {
     if (isNaN(query.boutique)) {
       throw new BadRequestException('Veuillez préciser la boutique.');
     }
-    const page = Number(query.page) || 1;
+    const page  = Number(query.page)  || 1;
     const limit = Number(query.limit) || 20;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
 
-    const [items, total] = await this.devisRepository.findAndCount({
-      where: { boutique: { id: query.boutique } },
-      order: { created_at: 'DESC' },
-      skip,
-      take: limit,
-    });
+    const qb = this.devisRepository.createQueryBuilder('d')
+      .where('d.boutiqueId = :boutiqueId', { boutiqueId: query.boutique })
+      .andWhere('d.deleted_at IS NULL');
+
+    if (query.date_debut) {
+      qb.andWhere('d.created_at >= :debut', { debut: new Date(query.date_debut) });
+    }
+    if (query.date_fin) {
+      const fin = new Date(query.date_fin);
+      fin.setHours(23, 59, 59, 999);
+      qb.andWhere('d.created_at <= :fin', { fin });
+    }
+
+    const [items, total] = await qb
+      .orderBy('d.created_at', 'DESC')
+      .skip(skip).take(limit)
+      .getManyAndCount();
 
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

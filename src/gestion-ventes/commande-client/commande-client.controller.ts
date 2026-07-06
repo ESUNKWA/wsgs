@@ -19,8 +19,20 @@ export class CommandeClientController {
   }
 
   @Get()
-  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }) {
-    const data = await this.commandeService.findAll(query);
+  async findAll(
+    @Query('boutique')   boutique: string,
+    @Query('date_debut') date_debut?: string,
+    @Query('date_fin')   date_fin?: string,
+    @Query('page')       page?: string,
+    @Query('limit')      limit?: string,
+  ) {
+    const data = await this.commandeService.findAll({
+      boutique:   +boutique,
+      date_debut,
+      date_fin,
+      page:       page  ? +page  : 1,
+      limit:      limit ? +limit : 20,
+    });
     return this.responseService.success('Liste des commandes client', data);
   }
 

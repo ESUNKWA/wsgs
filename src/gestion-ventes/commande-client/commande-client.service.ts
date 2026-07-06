@@ -65,20 +65,31 @@ export class CommandeClientService {
     }
   }
 
-  async findAll(query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(query: { boutique: number; page?: number; limit?: number; date_debut?: string; date_fin?: string }) {
     if (isNaN(query.boutique)) {
       throw new BadRequestException('Veuillez préciser la boutique.');
     }
-    const page = Number(query.page) || 1;
+    const page  = Number(query.page)  || 1;
     const limit = Number(query.limit) || 20;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
 
-    const [items, total] = await this.commandeRepository.findAndCount({
-      where: { boutique: { id: query.boutique } },
-      order: { created_at: 'DESC' },
-      skip,
-      take: limit,
-    });
+    const qb = this.commandeRepository.createQueryBuilder('cc')
+      .where('cc.boutiqueId = :boutiqueId', { boutiqueId: query.boutique })
+      .andWhere('cc.deleted_at IS NULL');
+
+    if (query.date_debut) {
+      qb.andWhere('cc.created_at >= :debut', { debut: new Date(query.date_debut) });
+    }
+    if (query.date_fin) {
+      const fin = new Date(query.date_fin);
+      fin.setHours(23, 59, 59, 999);
+      qb.andWhere('cc.created_at <= :fin', { fin });
+    }
+
+    const [items, total] = await qb
+      .orderBy('cc.created_at', 'DESC')
+      .skip(skip).take(limit)
+      .getManyAndCount();
 
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

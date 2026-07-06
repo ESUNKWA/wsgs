@@ -27,7 +27,7 @@ export class PdfService {
 
       await page.pdf({
         path: filePath,
-        width: '80mm',
+        width: '72mm',
         printBackground: true,
         margin: { top: '2mm', bottom: '4mm', left: '0mm', right: '0mm' },
       });
