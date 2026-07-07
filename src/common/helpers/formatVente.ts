@@ -1,14 +1,21 @@
-export function formatVente(vente: any) {
+export function formatVente(vente: any, produits?: { id: number; nom: string }[]) {
 
   return {
-    
-    nom_client: vente?.client?.nom, // ou vente?.client?.nom ?? 'Client divers'
+
+    nom_client: vente?.client?.nom,
     telephone_client: vente?.client?.telephone,
-    detail_vente: vente?.detail_vente?.map((item: { nom: string; quantite: any; prix_unitaire_vente: any; }) => ({
-      produit: item?.nom,
-      quantite: item?.quantite,
-      prix: item?.prix_unitaire_vente,
-    })),
+    detail_vente: vente?.detail_vente?.map((item: any) => {
+      // Résout le nom depuis : objet relation, tableau produits, ou champ direct
+      const nom =
+        item?.produit?.nom                                              // relation chargée (update)
+        ?? produits?.find(p => p.id == item?.produit)?.nom             // tableau passé en paramètre (create)
+        ?? item?.nom;                                                   // fallback
+      return {
+        produit: nom,
+        quantite: item?.quantite,
+        prix: item?.prix_unitaire_vente ?? item?.prix,
+      };
+    }),
 
     montant_total: vente?.montant_total,
     remise: vente?.remise,

@@ -113,7 +113,7 @@ export class VenteService {
         await manager.save(Produit, produits);
 
         createVenteDto.date_vente = venteSauvegarde?.created_at;
-        const venteFormattee = formatVente(createVenteDto);
+        const venteFormattee = formatVente(createVenteDto, produits.map(p => ({ id: p.id, nom: p.nom })));
         await manager.update(Vente, venteSauvegarde.id, { recu_data: venteFormattee });
 
         return { idVente: venteSauvegarde.id };
