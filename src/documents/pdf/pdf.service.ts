@@ -19,8 +19,12 @@ export class PdfService {
 
       if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-      const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--lang=fr-FR', '--font-render-hinting=none'],
+      });
       const page = await browser.newPage();
+      await page.setExtraHTTPHeaders({ 'Accept-Language': 'fr-FR,fr;q=0.9' });
       await page.setContent(html, { waitUntil: 'networkidle0' });
 
       const filePath = path.join(outputDir, fileName);
@@ -29,7 +33,7 @@ export class PdfService {
         path: filePath,
         width: '72mm',
         printBackground: true,
-        margin: { top: '2mm', bottom: '4mm', left: '0mm', right: '0mm' },
+        margin: { top: '0', bottom: '0', left: '0', right: '0' },
       });
 
       await browser.close();

@@ -43,6 +43,15 @@ export class VenteController {
     return this.responseService.success('vente trouvée', data);
   }
 
+  @Patch(':id/regulariser')
+  async regulariser(
+    @Param('id') id: string,
+    @Body() body: { mode_paiement: string; montant_recu: number; details_paiement?: any },
+  ) {
+    const data = await this.venteService.regulariser(+id, body);
+    return this.responseService.success('Vente régularisée avec succès', data);
+  }
+
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateVenteDto: UpdateVenteDto) {
     const achat = await this.venteService.update(+id, updateVenteDto);

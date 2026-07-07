@@ -38,16 +38,17 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
   <meta charset="UTF-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page { margin: 0; size: 72mm auto; }
     @font-face {
       font-family: 'ThermalFont';
-      src: local('Courier New'), local('Courier'), local('monospace');
-      unicode-range: U+0000-00FF;
+      /* DejaVu Mono en premier : installé sur Linux, couvre tous les caractères français */
+      src: local('DejaVu Sans Mono'), local('Liberation Mono'), local('Courier New'), local('Courier');
     }
-    body {
-      font-family: 'ThermalFont', 'Courier New', Courier, monospace;
+    html, body {
+      font-family: 'ThermalFont', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', Arial, sans-serif;
       font-size: 14px;
       width: 72mm;
-      padding: 2mm 3mm;
+      padding: 2mm 3mm 35mm 3mm; /* 35mm en bas pour laisser avancer le papier avant la lame */
       color: #000;
     }
     .center { text-align: center; }

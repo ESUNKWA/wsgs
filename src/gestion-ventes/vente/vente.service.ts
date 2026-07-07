@@ -288,6 +288,43 @@ export class VenteService {
     }
   }
 
+  async regulariser(
+    id: number,
+    dto: { mode_paiement: string; montant_recu: number; details_paiement?: any },
+  ): Promise<Vente> {
+    const vente = await this.venteRepository.findOne({ where: { id } });
+    if (!vente) throw new NotFoundException('Vente introuvable');
+    if (vente.statut !== 'non_payer')
+      throw new BadRequestException('Cette vente est déjà réglée');
+
+    const montantDu = vente.montant_total_apres_remise ?? vente.montant_total ?? 0;
+    const monnaie   = Math.max(0, (dto.montant_recu ?? 0) - montantDu);
+
+    await this.venteRepository.update(id, {
+      statut:           'payer',
+      mode_paiement:    dto.mode_paiement as any,
+      montant_recu:     dto.montant_recu,
+      monnaie_rendu:    monnaie,
+      details_paiement: dto.details_paiement ?? null,
+    });
+
+    // Met à jour le recu_data pour que le reçu reflète le paiement
+    const updated = await this.venteRepository.findOne({ where: { id }, relations: ['detail_vente'] });
+    if (updated?.recu_data) {
+      const recuData = {
+        ...updated.recu_data,
+        statut:        'payer',
+        mode_paiement: dto.mode_paiement,
+        montant_recu:  dto.montant_recu,
+        monnaie_rendu: monnaie,
+      };
+      await this.venteRepository.update(id, { recu_data: recuData });
+      updated.recu_data = recuData;
+    }
+
+    return updated!;
+  }
+
   remove(id: number) {
     return this.venteRepository.softDelete(id);
   }

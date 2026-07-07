@@ -53,6 +53,17 @@ export class PdfController {
   }
 
   @Public()
+  @Get('generate/facture/:id/thermique/print')
+  async printFactureThermique(@Param('id') id: string, @Res() res: Response) {
+    const factureData = await this.venteService.findOne(+id);
+    const body = generateHtmlThermique(factureData.recu_data, 'FACTURE');
+    // Injecte window.print() pour déclencher l'impression automatiquement
+    const html = body.replace('</body>', `<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script></body>`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  }
+
+  @Public()
   @Get('generate/devis/:id')
   async generateDevis(@Param('id') id: string) {
     const devis = await this.devisService.findOne(+id);

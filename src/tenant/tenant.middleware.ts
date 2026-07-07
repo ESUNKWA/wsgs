@@ -11,7 +11,8 @@ export class TenantMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '')
+      ?? (req.query?.token as string | undefined);
 
     if (token) {
       try {
