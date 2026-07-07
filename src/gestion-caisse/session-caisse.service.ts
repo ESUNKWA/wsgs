@@ -13,7 +13,10 @@ import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/util
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 
-const MODES = ['espece', 'mobile_money', 'carte', 'credit', 'mixte'] as const;
+const MODES = [
+  'espece', 'mobile_money', 'orange_money', 'wave', 'mtn_money', 'moov_money', 'dajmo',
+  'carte', 'credit', 'mixte',
+] as const;
 
 @Injectable()
 export class SessionCaisseService {
@@ -22,6 +25,32 @@ export class SessionCaisseService {
   private get dataSource() { return this.tenantContext.getDataSource(); }
   private get sessionRepo() { return this.dataSource.getRepository(SessionCaisse); }
   private get mouvementRepo() { return this.dataSource.getRepository(MouvementCaisse); }
+
+  /** Retourne les montants des ventes mixte décomposés par sous-mode de paiement. */
+  private async expandMixteAmounts(
+    boutiqueId: number,
+    dateOuverture: Date,
+    dateFermeture?: Date | null,
+  ): Promise<Record<string, number>> {
+    const amounts: Record<string, number> = {};
+    const rows = await this.dataSource.query(
+      `SELECT r_details_paiement
+       FROM t_ventes
+       WHERE "boutiqueId" = $1
+         AND created_at >= $2
+         AND ($3::timestamp IS NULL OR created_at <= $3)
+         AND deleted_at IS NULL
+         AND r_mode_paiement = 'mixte'`,
+      [boutiqueId, dateOuverture, dateFermeture ?? null],
+    );
+    for (const row of rows) {
+      const details: Record<string, number> = row.r_details_paiement ?? {};
+      for (const [mode, amount] of Object.entries(details)) {
+        amounts[mode] = (amounts[mode] ?? 0) + Number(amount);
+      }
+    }
+    return amounts;
+  }
 
   /**
    * Résout un caissier par id (tenant) OU par téléphone.
@@ -112,6 +141,15 @@ export class SessionCaisseService {
     const venteParMode: Record<string, number> = {};
     for (const row of ventesResult) {
       venteParMode[row.mode] = parseFloat(row.total);
+    }
+
+    // Éclater les ventes mixte : distribuer chaque sous-montant dans le bon mode
+    const mixteAmounts = await this.expandMixteAmounts(session.boutique.id, session.date_ouverture);
+    if (Object.keys(mixteAmounts).length > 0) {
+      delete venteParMode['mixte'];
+      for (const [mode, amount] of Object.entries(mixteAmounts)) {
+        venteParMode[mode] = (venteParMode[mode] ?? 0) + amount;
+      }
     }
 
     // Mouvements manuels par mode
@@ -226,6 +264,18 @@ export class SessionCaisseService {
       nbreVentes += parseInt(row.nbre);
     }
 
+    // Éclater les ventes mixte dans les sous-modes (orange_money, wave, etc.)
+    const mixteAmounts = await this.expandMixteAmounts(
+      session.boutique.id, session.date_ouverture, session.date_fermeture,
+    );
+    if (Object.keys(mixteAmounts).length > 0) {
+      delete ventesParMode['mixte'];
+      for (const [mode, amount] of Object.entries(mixteAmounts)) {
+        if (!ventesParMode[mode]) ventesParMode[mode] = { nbre: 0, total: 0 };
+        ventesParMode[mode].total += amount;
+      }
+    }
+
     const mouvParMode: Record<string, { entrees: number; sorties: number }> = {};
     let totalEntrees = 0;
     let totalSorties = 0;
@@ -295,6 +345,15 @@ export class SessionCaisseService {
 
     const venteParMode: Record<string, number> = {};
     for (const row of ventesResult) venteParMode[row.mode] = parseFloat(row.total);
+
+    // Éclater les ventes mixte dans les sous-modes
+    const mixteAmountsT = await this.expandMixteAmounts(session.boutique.id, session.date_ouverture);
+    if (Object.keys(mixteAmountsT).length > 0) {
+      delete venteParMode['mixte'];
+      for (const [mode, amount] of Object.entries(mixteAmountsT)) {
+        venteParMode[mode] = (venteParMode[mode] ?? 0) + amount;
+      }
+    }
 
     const mouvParMode: Record<string, { entrees: number; sorties: number }> = {};
     for (const m of session.mouvements) {

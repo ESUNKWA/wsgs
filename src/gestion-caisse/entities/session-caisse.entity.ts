@@ -6,8 +6,10 @@ import { MouvementCaisse } from './mouvement-caisse.entity';
 
 export type StatutSession = 'ouverte' | 'fermee';
 
-// { espece: number; mobile_money: number; carte: number; credit: number; mixte: number }
-export type FondParMode = Partial<Record<'espece' | 'mobile_money' | 'carte' | 'credit' | 'mixte', number>>;
+export type FondParMode = Partial<Record<
+  'espece' | 'mobile_money' | 'orange_money' | 'wave' | 'mtn_money' | 'moov_money' | 'dajmo' | 'carte' | 'credit' | 'mixte',
+  number
+>>;
 
 @Entity('t_sessions_caisse')
 export class SessionCaisse extends defaultDateGeneratorHelper {
