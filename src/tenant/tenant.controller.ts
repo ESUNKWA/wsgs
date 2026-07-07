@@ -60,6 +60,12 @@ export class TenantController {
     return this.responseService.success('Migration mode_paiement terminée', data);
   }
 
+  @Get('storage')
+  async getStorageStats() {
+    const data = await this.tenantService.getStorageStats();
+    return this.responseService.success('Stockage par tenant', data);
+  }
+
   @Get(':structureId')
   async getConfig(@Param('structureId') structureId: string) {
     const data = await this.tenantService.getConfig(+structureId);

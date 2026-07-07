@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -342,6 +344,59 @@ export class TenantService {
     const ds = this.pool.get(structureId);
     if (ds?.isInitialized) await ds.destroy();
     this.pool.delete(structureId);
+  }
+
+  async getStorageStats(): Promise<{ structureId: number; database: string; base_de_donnees: string; fichiers: Record<string, string>; total_fichiers: string }[]> {
+    const configs = await this.configRepo.find({ where: { isActive: true } });
+    const tenantsRoot = path.join(process.cwd(), 'public', 'tenants');
+
+    const formatBytes = (bytes: number): string => {
+      if (bytes === 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+    };
+
+    const dirSize = (dirPath: string): number => {
+      if (!fs.existsSync(dirPath)) return 0;
+      let total = 0;
+      for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const full = path.join(dirPath, entry.name);
+        total += entry.isDirectory() ? dirSize(full) : fs.statSync(full).size;
+      }
+      return total;
+    };
+
+    const results: { structureId: number; database: string; base_de_donnees: string; fichiers: Record<string, string>; total_fichiers: string }[] = [];
+    for (const config of configs) {
+      // Taille des fichiers par dossier
+      const tenantDir = path.join(tenantsRoot, String(config.structureId));
+      const subDirs = ['produits', 'logos', 'pdfs'];
+      const fichiers: Record<string, string> = {};
+      let totalFichiersBytes = 0;
+      for (const sub of subDirs) {
+        const bytes = dirSize(path.join(tenantDir, sub));
+        totalFichiersBytes += bytes;
+        fichiers[sub] = formatBytes(bytes);
+      }
+
+      // Taille de la base de données PostgreSQL
+      let base_de_donnees = 'N/A';
+      try {
+        const ds = await this.getDataSource(config.structureId);
+        const [row] = await ds.query(`SELECT pg_size_pretty(pg_database_size(current_database())) AS taille`);
+        base_de_donnees = row?.taille ?? 'N/A';
+      } catch { /* ignore */ }
+
+      results.push({
+        structureId: config.structureId,
+        database: config.database,
+        base_de_donnees,
+        fichiers,
+        total_fichiers: formatBytes(totalFichiersBytes),
+      });
+    }
+    return results;
   }
 
   private async createDatabaseIfNotExists(dto: CreateTenantDto): Promise<void> {
