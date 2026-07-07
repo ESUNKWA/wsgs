@@ -233,6 +233,7 @@ export class ProduitService {
       throw new BadRequestException('Veuillez préciser la boutique');
     }
 
+    const structureId = this.tenantContext.getStructureId();
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -287,7 +288,8 @@ export class ProduitService {
         entity.stock_minimum    = parseFloat(row['stock_minimum'] ?? row['Stock minimum'] ?? 0) || 0;
         entity.seuil_alert      = parseInt(row['seuil_alert'] ?? row['Seuil alerte'] ?? 2) || 2;
         entity.unite_mesure     = String(row['unite_mesure'] ?? row['Unité'] ?? 'pièce').trim() || 'pièce';
-        (entity as any).code_barre  = String(row['code_barre'] ?? row['Code barre'] ?? '').trim() || null;
+        const codeBarre = String(row['code_barre'] ?? row['Code barre'] ?? '').trim();
+        (entity as any).code_barre = codeBarre || BarcodeHelper.generateEan13(structureId ?? 0);
         (entity as any).description = String(row['description'] ?? row['Description'] ?? '').trim() || null;
         (entity as any).categorie   = categorie ?? null;
         (entity as any).boutique    = { id: boutiqueId };
