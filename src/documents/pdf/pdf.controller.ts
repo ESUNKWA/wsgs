@@ -1,7 +1,9 @@
-import { Controller, Post, Body, Param, Get } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { PdfService } from './pdf.service';
 import { generateHtml } from 'src/common/shared/generateHtml';
 import { generateHtmlThermique } from 'src/common/shared/generateHtmlThermique';
+import { generateFactureAbonnement, FactureAbonnementData } from 'src/common/shared/generateFactureAbonnement';
 import { Public } from 'src/gestion-utilisateurs/authentication/auth/public.decorator';
 import { VenteService } from 'src/gestion-ventes/vente/vente.service';
 import { DevisService } from 'src/gestion-ventes/devis/devis.service';
@@ -14,6 +16,19 @@ export class PdfController {
     private readonly venteService: VenteService,
     private readonly devisService: DevisService,
   ) {}
+
+  @Public()
+  @Post('facture/abonnement')
+  async generateFactureAbonnement(@Body() data: FactureAbonnementData, @Res() res: Response) {
+    const html = generateFactureAbonnement(data);
+    const buffer = await this.pdfService.generatePdfBuffer(html);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="facture_${data.numero}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
 
   @Post('facture/pdf')
   async generateFactureOld(@Body() body: any) {

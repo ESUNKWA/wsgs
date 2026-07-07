@@ -50,7 +50,7 @@ Swagger UI is available at `/swagger` and JSON schema at `/swagger/json`.
 
 ## Architecture
 
-**StockFlow** is a NestJS 11 REST API for inventory/POS management backed by PostgreSQL via TypeORM with `synchronize: true` (schema auto-migrates on start).
+**NeuStock** is a NestJS 11 REST API for inventory/POS management backed by PostgreSQL via TypeORM with `synchronize: true` (schema auto-migrates on start).
 
 ### Module groups
 

@@ -162,13 +162,29 @@ export class AbonnementController {
     @Param('abonnementId') abonnementId: string,
     @Res() res: Response,
   ) {
-    const facture = await this.abonnementService.getFacture(+abonnementId);
-    const html    = this.abonnementService.buildFactureHtml(facture);
+    const facture  = await this.abonnementService.getFacture(+abonnementId);
+    const html     = this.abonnementService.buildFactureHtml(facture);
     const fileName = `facture-${facture.reference}.pdf`;
-    const buffer  = await this.pdfService.generatePdfBuffer(html);
+    const buffer   = await this.pdfService.generatePdfBuffer(html);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  }
+
+  @Get(':abonnementId/contrat/pdf')
+  async getContratPdf(
+    @Param('abonnementId') abonnementId: string,
+    @Res() res: Response,
+  ) {
+    const facture  = await this.abonnementService.getFacture(+abonnementId);
+    const html     = this.abonnementService.buildContratHtml(facture);
+    const contratRef = `CTR-${String(facture.structure.id).padStart(4,'0')}-${String(facture.abonnement.id).padStart(6,'0')}`;
+    const buffer   = await this.pdfService.generatePdfBuffer(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="contrat-${contratRef}.pdf"`);
     res.setHeader('Content-Length', buffer.length);
     res.end(buffer);
   }

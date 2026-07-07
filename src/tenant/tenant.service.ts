@@ -237,6 +237,23 @@ export class TenantService {
     await tenantDs.synchronize();
   }
 
+  async runSqlOnAllTenants(sql: string[]): Promise<{ structureId: number; database: string; status: string }[]> {
+    const configs = await this.configRepo.find({ where: { isActive: true } });
+    const results: { structureId: number; database: string; status: string }[] = [];
+    for (const config of configs) {
+      try {
+        const ds = await this.getDataSource(config.structureId);
+        for (const query of sql) {
+          await ds.query(query);
+        }
+        results.push({ structureId: config.structureId, database: config.database, status: 'ok' });
+      } catch (e: any) {
+        results.push({ structureId: config.structureId, database: config.database, status: `erreur: ${e.message}` });
+      }
+    }
+    return results;
+  }
+
   async reseedAll(): Promise<{ structureId: number; status: string }[]> {
     const configs = await this.configRepo.find({ where: { isActive: true } });
     const results: { structureId: number; status: string }[] = [];

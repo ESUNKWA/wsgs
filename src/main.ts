@@ -27,10 +27,10 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('StockFlow API')
+    .setTitle('NeuStock API')
     .setDescription('The cats API description')
     .setVersion('1.0')
-    .addTag('StockFlow')
+    .addTag('NeuStock')
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);

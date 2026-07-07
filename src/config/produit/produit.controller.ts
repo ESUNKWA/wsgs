@@ -35,6 +35,17 @@ export class ProduitController {
     return this.responseService.success('Produit trouvé', data);
   }
 
+  @Get('catalogue-barcodes')
+  async catalogueBarcodes(@Query('boutique') boutique: string, @Res() res: Response) {
+    const buffer = await this.produitService.generateCatalogueCodeBarres(+boutique);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="catalogue-codes-barres.pdf"',
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
   @Get(':id/etiquette')
   async etiquette(
     @Param('id') id: string,

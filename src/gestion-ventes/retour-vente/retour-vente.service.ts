@@ -152,12 +152,12 @@ export class RetourVenteService {
       qb.andWhere('vente.reference ILIKE :reference', { reference: `%${reference}%` });
     }
     if (date_debut) {
-      qb.andWhere('vente.created_at >= :date_debut', { date_debut: new Date(date_debut) });
+      qb.andWhere('r.created_at >= :date_debut', { date_debut: new Date(date_debut) });
     }
     if (date_fin) {
       const fin = new Date(date_fin);
       fin.setHours(23, 59, 59, 999);
-      qb.andWhere('vente.created_at <= :date_fin', { date_fin: fin });
+      qb.andWhere('r.created_at <= :date_fin', { date_fin: fin });
     }
     if (montant !== undefined) {
       qb.andWhere('vente.montant_total = :montant', { montant });

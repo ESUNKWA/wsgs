@@ -47,6 +47,19 @@ export class TenantController {
     return this.responseService.success('Tous les tenants resynchronisés', data);
   }
 
+  @Public()
+  @Post('migrate/mode-paiement')
+  async migrateModePaiement() {
+    const sql = [
+      `ALTER TABLE t_ventes ALTER COLUMN r_mode_paiement TYPE character varying(30) USING r_mode_paiement::text`,
+      `DROP TYPE IF EXISTS t_ventes_r_mode_paiement_enum`,
+      `ALTER TABLE t_achats ALTER COLUMN r_mode_paiement TYPE character varying(30) USING r_mode_paiement::text`,
+      `DROP TYPE IF EXISTS t_achats_r_mode_paiement_enum`,
+    ];
+    const data = await this.tenantService.runSqlOnAllTenants(sql);
+    return this.responseService.success('Migration mode_paiement terminée', data);
+  }
+
   @Get(':structureId')
   async getConfig(@Param('structureId') structureId: string) {
     const data = await this.tenantService.getConfig(+structureId);

@@ -7,6 +7,7 @@ import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
 import { BarcodeHelper } from 'src/common/helpers/barcode.helper';
 import { PdfService } from 'src/documents/pdf/pdf.service';
+import { IsNull } from 'typeorm';
 import * as XLSX from 'xlsx';
 
 @Injectable()
@@ -96,6 +97,83 @@ export class ProduitService {
 
   async remove(id: number) {
     return await this.produitRepository.softDelete(id);
+  }
+
+  async generateCatalogueCodeBarres(boutiqueId: number): Promise<Buffer> {
+    const structureId = this.tenantContext.getStructureId();
+
+    // Étape 1 : assigner un code-barre aux produits qui n'en ont pas (SQL direct)
+    const ds = this.tenantContext.getDataSource();
+    const sansCodes = await this.produitRepository.find({
+      where: { boutique: { id: boutiqueId }, code_barre: IsNull() },
+      order: { nom: 'ASC' },
+    });
+    for (const p of sansCodes) {
+      const newCode = BarcodeHelper.generateEan13(structureId ?? 0);
+      await ds.query(
+        `UPDATE t_produits SET r_code_barre = $1 WHERE id = $2`,
+        [newCode, p.id],
+      );
+    }
+
+    // Étape 2 : re-lire depuis la base pour garantir que le PDF = base de données
+    const produits = await this.produitRepository.find({
+      where: { boutique: { id: boutiqueId } },
+      order: { nom: 'ASC' },
+    });
+    if (!produits.length) throw new NotFoundException('Aucun produit trouvé pour cette boutique');
+
+    const produitsAvecCode = produits.filter(p => !!p.code_barre);
+    if (!produitsAvecCode.length) throw new NotFoundException('Aucun produit avec code-barres');
+
+    // Génère toutes les images en parallèle
+    const items = await Promise.all(
+      produitsAvecCode.map(async (p) => {
+        const img = await BarcodeHelper.toBase64Png(p.code_barre!);
+        const prix = p.prix_vente ? `${Number(p.prix_vente).toLocaleString('fr-FR')} FCFA` : '';
+        return { nom: p.nom, code: p.code_barre, img, prix };
+      }),
+    );
+
+    const cells = items.map(item => `
+      <div class="cell">
+        <p class="nom">${item.nom}</p>
+        <img src="${item.img}" alt="${item.code}">
+        <p class="code">${item.code}</p>
+        ${item.prix ? `<p class="prix">${item.prix}</p>` : ''}
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #fff; padding: 8mm; }
+    h1 { font-size: 13pt; color: #222; margin-bottom: 5mm; border-bottom: 1px solid #ccc; padding-bottom: 3mm; }
+    .grid { display: flex; flex-wrap: wrap; gap: 4mm; }
+    .cell {
+      width: 55mm;
+      border: 1px solid #ddd;
+      border-radius: 2mm;
+      padding: 3mm;
+      text-align: center;
+      page-break-inside: avoid;
+      background: #fff;
+    }
+    .nom  { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111; }
+    img   { width: 100%; max-height: 20mm; object-fit: contain; margin: 1mm 0; }
+    .code { font-size: 7pt; color: #666; letter-spacing: 1px; font-family: 'Courier New', monospace; }
+    .prix { font-size: 9pt; font-weight: bold; color: #222; margin-top: 2mm; }
+  </style>
+</head>
+<body>
+  <h1>Catalogue codes-barres — ${items.length} produit(s)</h1>
+  <div class="grid">${cells}</div>
+</body>
+</html>`;
+
+    return this.pdfService.generatePdfBuffer(html);
   }
 
   async generateEtiquette(id: number, copies = 1): Promise<Buffer> {

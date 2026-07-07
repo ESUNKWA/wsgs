@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Abonnement, PlanAbonnement, StatutAbonnement } from './entities/abonnement.entity';
 import { PlanTarif, PlanType } from './entities/plan-tarif.entity';
 import { BoutiqueAbonnement } from './entities/boutique-abonnement.entity';
@@ -402,80 +404,397 @@ export class AbonnementService {
     };
   }
 
+  private getLogoHtml(height = 52): string {
+    const logoPath = path.join(process.cwd(), 'public', 'assets', 'ekwatech-logo.png');
+    if (fs.existsSync(logoPath)) {
+      const b64 = fs.readFileSync(logoPath).toString('base64');
+      return `<img src="data:image/png;base64,${b64}" style="height:${height}px;width:auto;object-fit:contain;" alt="Ekwatech">`;
+    }
+    return `<div style="height:${height}px;width:${height}px;background:#F26360;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:${Math.round(height*0.4)}px;">E</div>`;
+  }
+
   buildFactureHtml(facture: any): string {
+    const f = (v: any) => (v && v !== 'null' && v !== 'undefined') ? v : null;
+    const fmt = (n: number, d = 'XOF') => `${Number(n).toLocaleString('fr-FR')} ${d}`;
+    const fmtDate = (d: any) => new Date(d).toLocaleDateString('fr-FR');
+
+    const statut = facture.abonnement.statut;
+    const badgeColor: Record<string, string> = {
+      actif:      'background:#d1fae5;color:#065f46;',
+      expire:     'background:#fee2e2;color:#991b1b;',
+      suspendu:   'background:#fef3c7;color:#92400e;',
+      en_attente: 'background:#dbeafe;color:#1e40af;',
+      essai:      'background:#ede9fe;color:#5b21b6;',
+    };
+
     const lignesBoutiques = facture.detail.boutiques_supplementaires
       .filter((b: any) => b.est_active)
-      .map((b: any) => {
+      .map((b: any, i: number) => {
         const label = b.config?.type === 'pourcentage'
           ? `Boutique supplémentaire — ${b.boutiqueNom} (${b.config.valeur}% du plan)`
           : `Boutique supplémentaire — ${b.boutiqueNom}`;
-        return `
-        <tr>
-          <td>${label}</td>
-          <td style="text-align:right">${b.prix_unitaire.toLocaleString()} ${b.devise}</td>
+        return `<tr style="background:${i % 2 === 0 ? '#ffffff' : '#f7f7f7'}">
+          <td style="padding:10px 14px;border:1px solid #ddd;">${label}</td>
+          <td style="padding:10px 14px;border:1px solid #ddd;text-align:right;white-space:nowrap;">${fmt(b.prix_unitaire, b.devise)}</td>
         </tr>`;
-      })
-      .join('');
+      }).join('');
+
+    const clientLines = [
+      f(facture.structure.nom)      ? `<strong>${f(facture.structure.nom)}</strong>` : null,
+      f(facture.structure.email)    ? f(facture.structure.email) : null,
+      f(facture.structure.telephone)? f(facture.structure.telephone) : null,
+      f(facture.structure.adresse)  ? f(facture.structure.adresse) : null,
+    ].filter(Boolean).join('<br>');
 
     return `<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #333; padding: 30px; }
-    h1 { color: #1a56db; font-size: 22px; margin-bottom: 4px; }
-    .meta { color: #666; font-size: 12px; margin-bottom: 24px; }
-    .section { margin-bottom: 20px; }
-    .section h3 { font-size: 13px; text-transform: uppercase; color: #888; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 12px; }
-    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
-    .total-row td { font-weight: bold; font-size: 14px; border-top: 2px solid #1a56db; border-bottom: none; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-    .actif { background: #d1fae5; color: #065f46; }
-    .expire { background: #fee2e2; color: #991b1b; }
-    .suspendu { background: #fef3c7; color: #92400e; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', serif; font-size: 10pt; color: #333; background: #fff; padding: 40px 45px 70px; }
+    .header { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
+    .header-info h1 { font-size: 17pt; color: #F26360; font-weight: bold; }
+    .header-info .slogan { font-style: italic; font-size: 9pt; color: #6B7B7E; margin: 2px 0; }
+    .header-info .contact { font-size: 9pt; color: #6B7B7E; }
+    hr.sep { border: none; border-bottom: 1.5px solid #F26360; margin: 10px 0 16px; }
+    .title-section { text-align: right; margin-bottom: 20px; }
+    .title-section h2 { font-size: 22pt; color: #F26360; font-weight: bold; letter-spacing: 2px; }
+    .title-section .numero { font-size: 10pt; color: #6B7B7E; margin-top: 4px; }
+    .meta-row { display: flex; justify-content: space-between; margin-bottom: 24px; gap: 20px; }
+    .meta-client .label { font-weight: bold; color: #444; font-size: 8pt; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .meta-client .value { font-size: 10pt; line-height: 1.7; }
+    .meta-dates { text-align: right; font-size: 10pt; line-height: 1.9; }
+    .meta-dates span { display: block; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 8pt; font-weight: bold; }
+    table.items { width: 100%; border-collapse: collapse; }
+    table.items thead tr { background: #2d2d2d; }
+    table.items thead th { padding: 10px 14px; color: #fff; font-size: 10pt; border: 1px solid #2d2d2d; }
+    table.items thead th:first-child { text-align: left; }
+    table.items thead th:last-child  { text-align: right; }
+    .totals { display: flex; justify-content: flex-end; margin-top: 0; }
+    .totals-table { width: 280px; border-collapse: collapse; }
+    .totals-table td { padding: 7px 14px; font-size: 10pt; }
+    .total-row td { background: #f5f5f5; border-top: 2px solid #222; padding: 10px 14px; }
+    .total-label { text-align: right; font-size: 11pt; font-weight: bold; color: #111; }
+    .total-value { text-align: right; font-size: 12pt; font-weight: bold; color: #111; white-space: nowrap; }
+    .periode-box { background: #f7f7f7; border-left: 4px solid #555; padding: 12px 16px; margin-bottom: 24px; font-size: 10pt; line-height: 1.8; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; border-top: 1px solid #ccc; padding: 10px 45px; text-align: center; font-size: 9pt; color: #6B7B7E; font-style: italic; background: #fff; }
   </style>
 </head>
 <body>
-  <h1>Facture d'abonnement</h1>
-  <div class="meta">
-    Référence : <strong>${facture.reference}</strong> &nbsp;|&nbsp;
-    Émise le : <strong>${new Date(facture.date_emission).toLocaleDateString('fr-FR')}</strong> &nbsp;|&nbsp;
-    Statut : <span class="badge ${facture.abonnement.statut}">${facture.abonnement.statut.toUpperCase()}</span>
+
+  <!-- En-tête Ekwatech -->
+  <div class="header">
+    ${this.getLogoHtml(72)}
+    <div class="header-info">
+      <h1>EKWATECH SOLUTIONS</h1>
+      <p class="slogan">IT Business Solutions</p>
+      <p class="contact">+225 07 12 09 27 83&nbsp;&nbsp;|&nbsp;&nbsp;www.ekwatech.com</p>
+    </div>
+  </div>
+  <hr class="sep">
+
+  <!-- Titre -->
+  <div class="title-section">
+    <h2>FACTURE</h2>
+    <p class="numero">N° ${facture.reference}</p>
   </div>
 
-  <div class="section">
-    <h3>Informations client</h3>
-    <p><strong>${facture.structure.nom ?? '—'}</strong><br/>
-    ${facture.structure.email ?? ''} &nbsp; ${facture.structure.telephone ?? ''}<br/>
-    ${facture.structure.adresse ?? ''}</p>
+  <!-- Client + Dates -->
+  <div class="meta-row">
+    <div class="meta-client">
+      <p class="label">Facturé à</p>
+      <div class="value">${clientLines}</div>
+    </div>
+    <div class="meta-dates">
+      <span><strong>Date d'émission&nbsp;:</strong> ${fmtDate(facture.date_emission)}</span>
+      <span><strong>Devise&nbsp;:</strong> ${facture.detail.devise}</span>
+      <span><strong>Statut&nbsp;:</strong> <span class="badge" style="${badgeColor[statut] ?? ''}">${statut.toUpperCase()}</span></span>
+    </div>
   </div>
 
-  <div class="section">
-    <h3>Période d'abonnement</h3>
-    <p>Plan : <strong>${facture.abonnement.plan.replace('_', ' ').toUpperCase()}</strong><br/>
-    Du <strong>${new Date(facture.abonnement.date_debut).toLocaleDateString('fr-FR')}</strong>
-    au <strong>${new Date(facture.abonnement.date_fin).toLocaleDateString('fr-FR')}</strong></p>
+  <!-- Période d'abonnement -->
+  <div class="periode-box">
+    <strong style="color:#F26360;">Période d'abonnement</strong><br>
+    Plan : <strong>${facture.abonnement.plan.replace('_', ' ').toUpperCase()}</strong>
+    &nbsp;&nbsp;—&nbsp;&nbsp;
+    Du <strong>${fmtDate(facture.abonnement.date_debut)}</strong>
+    au <strong>${fmtDate(facture.abonnement.date_fin)}</strong>
   </div>
 
-  <div class="section">
-    <h3>Détail de facturation</h3>
-    <table>
-      <thead><tr><th>Désignation</th><th style="text-align:right">Montant</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>Plan de base — ${facture.abonnement.plan.replace('_', ' ')}</td>
-          <td style="text-align:right">${facture.detail.plan_base.montant.toLocaleString()} ${facture.detail.devise}</td>
-        </tr>
-        ${lignesBoutiques}
-        <tr class="total-row">
-          <td>TOTAL</td>
-          <td style="text-align:right">${facture.detail.total.toLocaleString()} ${facture.detail.devise}</td>
-        </tr>
-      </tbody>
+  <!-- Lignes de détail -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:75%;text-align:left;">Désignation</th>
+        <th style="width:25%;text-align:right;">Montant (${facture.detail.devise})</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#f7f7f7;">
+        <td style="padding:10px 14px;border:1px solid #ddd;">Plan de base — ${facture.abonnement.plan.replace('_', ' ')}</td>
+        <td style="padding:10px 14px;border:1px solid #ddd;text-align:right;white-space:nowrap;">${fmt(facture.detail.plan_base.montant, facture.detail.devise)}</td>
+      </tr>
+      ${lignesBoutiques}
+    </tbody>
+  </table>
+
+  <!-- Total -->
+  <div class="totals">
+    <table class="totals-table">
+      <tr class="total-row">
+        <td class="total-label">TOTAL À PAYER</td>
+        <td class="total-value">${fmt(facture.detail.total, facture.detail.devise)}</td>
+      </tr>
     </table>
   </div>
+
+  <!-- Pied de page -->
+  <div class="footer">
+    Ekwatech Solutions — Merci pour votre confiance.
+  </div>
+
+</body>
+</html>`;
+  }
+
+  buildContratHtml(facture: any): string {
+    const f = (v: any) => (v && v !== 'null' && v !== 'undefined') ? v : null;
+    const fmtDate = (d: any) => new Date(d).toLocaleDateString('fr-FR');
+    const fmt = (n: number, d = 'XOF') => `${Number(n).toLocaleString('fr-FR')} ${d}`;
+
+    const dureeLabel: Record<string, string> = {
+      essai: "1 mois (période d'essai)",
+      '1_mois': '1 mois',
+      '3_mois': '3 mois',
+      '6_mois': '6 mois',
+      '1_an':   '12 mois',
+    };
+    const plan = facture.abonnement.plan;
+    const contratRef = `CTR-${String(facture.structure.id).padStart(4,'0')}-${String(facture.abonnement.id).padStart(6,'0')}`;
+
+    const clientLines = [
+      f(facture.structure.nom),
+      f(facture.structure.telephone),
+      f(facture.structure.email),
+      f(facture.structure.adresse),
+    ].filter(Boolean);
+
+    const lignesBoutiques = facture.detail.boutiques_supplementaires
+      .filter((b: any) => b.est_active)
+      .map((b: any) => {
+        const label = b.config?.type === 'pourcentage'
+          ? `${b.boutiqueNom} (${b.config.valeur}% du plan)`
+          : b.boutiqueNom;
+        return `<li>${label} : <strong>${fmt(b.prix_unitaire, b.devise)}</strong></li>`;
+      }).join('');
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', serif; font-size: 10.5pt; color: #222; background: #fff; padding: 40px 50px 80px; line-height: 1.6; }
+
+    /* En-tête */
+    .header { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
+    .logo-box { height: 54px; width: auto; flex-shrink: 0; }
+    .header-info h1 { font-size: 17pt; color: #F26360; font-weight: bold; }
+    .header-info .sub { font-style: italic; font-size: 9pt; color: #6B7B7E; }
+    .header-info .contact { font-size: 9pt; color: #6B7B7E; }
+    hr.sep { border: none; border-bottom: 1.5px solid #F26360; margin: 10px 0 20px; }
+
+    /* Titre contrat */
+    .contrat-title { text-align: center; margin-bottom: 6px; }
+    .contrat-title h2 { font-size: 18pt; color: #F26360; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; }
+    .contrat-title .ref { font-size: 10pt; color: #6B7B7E; margin-top: 4px; }
+    .contrat-title .date { font-size: 10pt; color: #6B7B7E; }
+    hr.sep2 { border: none; border-bottom: 1px solid #ccc; margin: 16px 0; }
+
+    /* Parties */
+    .parties { display: flex; gap: 20px; margin-bottom: 24px; }
+    .partie-box { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 14px 16px; }
+    .partie-box .partie-label { font-size: 8pt; font-weight: bold; color: #444; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }
+    .partie-box .partie-nom { font-size: 11pt; font-weight: bold; margin-bottom: 4px; }
+    .partie-box p { font-size: 9.5pt; color: #444; line-height: 1.7; }
+
+    /* Sections */
+    .article { margin-bottom: 20px; }
+    .article h3 { font-size: 11pt; font-weight: bold; color: #222; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 3px; border-bottom: 1px solid #ddd; }
+    .article p, .article li { font-size: 10pt; color: #333; line-height: 1.7; }
+    .article ul { padding-left: 20px; margin-top: 4px; }
+    .article ul li { margin-bottom: 3px; }
+
+    /* Tableau tarifaire */
+    .tarif-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .tarif-table thead tr { background: #2d2d2d; }
+    .tarif-table thead th { padding: 9px 12px; color: #fff; font-size: 10pt; border: 1px solid #2d2d2d; }
+    .tarif-table thead th:first-child { text-align: left; }
+    .tarif-table thead th:last-child  { text-align: right; }
+    .tarif-table tbody tr:nth-child(odd)  { background: #f7f7f7; }
+    .tarif-table tbody tr:nth-child(even) { background: #fff; }
+    .tarif-table tbody td { padding: 9px 12px; border: 1px solid #ddd; font-size: 10pt; }
+    .tarif-table tbody td:last-child { text-align: right; white-space: nowrap; }
+    .tarif-table tfoot td { padding: 10px 12px; border-top: 2px solid #222; background: #f0f0f0; font-weight: bold; color: #111; font-size: 11pt; }
+    .tarif-table tfoot td:last-child { text-align: right; }
+
+    /* Signatures */
+    .signatures { display: flex; gap: 40px; margin-top: 30px; }
+    .sig-box { flex: 1; border-top: 1px solid #555; padding-top: 10px; }
+    .sig-box .sig-label { font-size: 9pt; color: #222; font-weight: bold; text-transform: uppercase; margin-bottom: 50px; }
+    .sig-box .sig-name { font-size: 10pt; color: #555; }
+
+    /* Footer */
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; border-top: 1px solid #ccc; padding: 8px 50px; display: flex; justify-content: space-between; font-size: 8.5pt; color: #6B7B7E; font-style: italic; background: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- En-tête -->
+  <div class="header">
+    ${this.getLogoHtml(72)}
+    <div class="header-info">
+      <h1>EKWATECH SOLUTIONS</h1>
+      <p class="sub">IT Business Solutions</p>
+      <p class="contact">+225 07 12 09 27 83&nbsp;&nbsp;|&nbsp;&nbsp;www.ekwatech.com</p>
+    </div>
+  </div>
+  <hr class="sep">
+
+  <!-- Titre -->
+  <div class="contrat-title">
+    <h2>Contrat d'abonnement</h2>
+    <p class="ref">Réf. ${contratRef}</p>
+    <p class="date">Émis le ${fmtDate(new Date())}</p>
+  </div>
+  <hr class="sep2">
+
+  <!-- Parties -->
+  <div class="parties">
+    <div class="partie-box">
+      <p class="partie-label">Le Prestataire</p>
+      <p class="partie-nom">EKWATECH SOLUTIONS</p>
+      <p>IT Business Solutions<br>
+      +225 07 12 09 27 83<br>
+      www.ekwatech.com</p>
+    </div>
+    <div class="partie-box">
+      <p class="partie-label">Le Client (Abonné)</p>
+      <p class="partie-nom">${f(facture.structure.nom) ?? '—'}</p>
+      <p>${clientLines.slice(1).join('<br>')}</p>
+    </div>
+  </div>
+
+  <!-- Article 1 : Objet -->
+  <div class="article">
+    <h3>Article 1 — Objet du contrat</h3>
+    <p>Le présent contrat a pour objet de définir les conditions dans lesquelles <strong>Ekwatech Solutions</strong>
+    fournit à <strong>${f(facture.structure.nom) ?? 'l\'abonné'}</strong> l'accès à la plateforme de gestion
+    commerciale <strong>NeuStock</strong>, solution SaaS de gestion des stocks, ventes, achats et caisse.</p>
+  </div>
+
+  <!-- Article 2 : Plan souscrit -->
+  <div class="article">
+    <h3>Article 2 — Plan souscrit et durée</h3>
+    <p>
+      Plan souscrit : <strong>${plan.replace('_', ' ').toUpperCase()}</strong> (durée : ${dureeLabel[plan] ?? plan})<br>
+      Date de début : <strong>${fmtDate(facture.abonnement.date_debut)}</strong><br>
+      Date de fin &nbsp;: <strong>${fmtDate(facture.abonnement.date_fin)}</strong>
+    </p>
+  </div>
+
+  <!-- Article 3 : Tarification -->
+  <div class="article">
+    <h3>Article 3 — Tarification</h3>
+    <table class="tarif-table">
+      <thead>
+        <tr>
+          <th style="width:70%">Désignation</th>
+          <th style="width:30%">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Plan de base — ${plan.replace('_', ' ')} (1 boutique incluse)</td>
+          <td>${fmt(facture.detail.plan_base.montant, facture.detail.devise)}</td>
+        </tr>
+        ${facture.detail.boutiques_supplementaires.filter((b: any) => b.est_active).map((b: any, i: number) => {
+          const label = b.config?.type === 'pourcentage'
+            ? `Boutique supplémentaire — ${b.boutiqueNom} (${b.config.valeur}% du plan)`
+            : `Boutique supplémentaire — ${b.boutiqueNom}`;
+          return `<tr><td>${label}</td><td>${fmt(b.prix_unitaire, b.devise)}</td></tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>TOTAL DU CONTRAT</td>
+          <td>${fmt(facture.detail.total, facture.detail.devise)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Article 4 : Services inclus -->
+  <div class="article">
+    <h3>Article 4 — Services inclus</h3>
+    <ul>
+      <li>Accès illimité à la plateforme NeuStock pendant la durée du contrat</li>
+      <li>Gestion des stocks, ventes, achats, devis et commandes clients</li>
+      <li>Gestion de la caisse et des sessions caisse</li>
+      <li>Génération de factures et reçus PDF</li>
+      <li>Tableau de bord et statistiques en temps réel</li>
+      <li>Support technique par email et téléphone</li>
+      <li>Mises à jour de la plateforme incluses</li>
+    </ul>
+  </div>
+
+  <!-- Article 5 : Obligations du client -->
+  <div class="article">
+    <h3>Article 5 — Obligations du client</h3>
+    <ul>
+      <li>Régler le montant de l'abonnement dans les délais convenus</li>
+      <li>Utiliser la plateforme dans le respect des lois en vigueur</li>
+      <li>Ne pas partager ses identifiants de connexion avec des tiers non autorisés</li>
+      <li>Informer Ekwatech Solutions de tout changement de coordonnées</li>
+    </ul>
+  </div>
+
+  <!-- Article 6 : Résiliation -->
+  <div class="article">
+    <h3>Article 6 — Résiliation</h3>
+    <p>Le contrat prend fin à l'échéance de la période souscrite. En cas de non-renouvellement, l'accès à la
+    plateforme est automatiquement suspendu à la date de fin. Toute résiliation anticipée ne donne pas lieu
+    à remboursement, sauf accord écrit entre les parties.</p>
+  </div>
+
+  <!-- Article 7 : Confidentialité -->
+  <div class="article">
+    <h3>Article 7 — Confidentialité et données</h3>
+    <p>Ekwatech Solutions s'engage à ne pas divulguer les données du client à des tiers. Les données sont
+    hébergées de manière sécurisée et restent la propriété exclusive du client. En cas de résiliation,
+    le client peut demander l'export de ses données dans un délai de 30 jours.</p>
+  </div>
+
+  <!-- Signatures -->
+  <div class="signatures">
+    <div class="sig-box">
+      <p class="sig-label">Pour Ekwatech Solutions</p>
+      <p class="sig-name">Nom &amp; signature :</p>
+    </div>
+    <div class="sig-box">
+      <p class="sig-label">Pour ${f(facture.structure.nom) ?? 'le client'}</p>
+      <p class="sig-name">Nom &amp; signature :</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Ekwatech Solutions — Contrat d'abonnement NeuStock</span>
+    <span>Réf. ${contratRef}</span>
+  </div>
+
 </body>
 </html>`;
   }
