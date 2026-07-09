@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -34,8 +35,42 @@ const DUREE_PLAN: Record<PlanType, number> = {
   '1_an':   12,
 };
 
+const CATEGORIES_SEED: { label: string; ordre: number }[] = [
+  // Commerce alimentaire
+  { label: 'Superette',                      ordre:  1 },
+  { label: 'Supermarché',                    ordre:  2 },
+  { label: 'Épicerie / Boutique de quartier', ordre: 3 },
+  { label: 'Boulangerie / Pâtisserie',       ordre:  4 },
+  { label: 'Boucherie / Charcuterie',        ordre:  5 },
+  { label: 'Poissonnerie',                   ordre:  6 },
+  { label: 'Pharmacie',                      ordre:  7 },
+  // Restauration
+  { label: 'Restaurant',                     ordre: 10 },
+  { label: 'Fast-food / Snack',              ordre: 11 },
+  { label: 'Café / Bar',                     ordre: 12 },
+  { label: 'Maquis / Gargote',               ordre: 13 },
+  // Commerce non alimentaire
+  { label: 'Boutique de vêtements',          ordre: 20 },
+  { label: 'Quincaillerie',                  ordre: 21 },
+  { label: 'Papeterie / Librairie',          ordre: 22 },
+  { label: 'Électronique / High-tech',       ordre: 23 },
+  { label: 'Cosmétique / Beauté',            ordre: 24 },
+  { label: 'Matériaux de construction',      ordre: 25 },
+  { label: 'Droguerie',                      ordre: 26 },
+  // Services
+  { label: 'Salon de coiffure / Barbier',    ordre: 30 },
+  { label: 'Pressing / Blanchisserie',       ordre: 31 },
+  { label: 'Clinique / Cabinet médical',     ordre: 32 },
+  { label: 'Pharmacie vétérinaire',          ordre: 33 },
+  { label: 'Station-service / Carburant',    ordre: 34 },
+  // Grossiste / Distribution
+  { label: 'Grossiste alimentaire',          ordre: 40 },
+  { label: 'Grossiste non alimentaire',      ordre: 41 },
+  { label: 'Importateur / Distributeur',     ordre: 42 },
+];
+
 @Injectable()
-export class AbonnementService {
+export class AbonnementService implements OnApplicationBootstrap {
   // Cache statut par structureId — TTL 5 minutes
   private readonly cache = new Map<number, { statut: StatutAbonnement | 'aucun'; cachedAt: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000;
@@ -50,6 +85,19 @@ export class AbonnementService {
     @InjectRepository(PlanTarifCategorie)  private readonly planTarifCatRepo:      Repository<PlanTarifCategorie>,
     @InjectRepository(Structure)           private readonly structureRepo:         Repository<Structure>,
   ) {}
+
+  // ─── Seed catégories au démarrage ────────────────────────────────────────
+
+  async onApplicationBootstrap(): Promise<void> {
+    const existing = await this.categorieRepo.find({ select: ['label'] });
+    const existingLabels = new Set(existing.map(c => c.label));
+    const toInsert = CATEGORIES_SEED.filter(c => !existingLabels.has(c.label));
+    if (toInsert.length > 0) {
+      await this.categorieRepo.save(
+        toInsert.map(c => this.categorieRepo.create({ ...c, est_actif: true })),
+      );
+    }
+  }
 
   // ─── Essai ────────────────────────────────────────────────────────────────
 
