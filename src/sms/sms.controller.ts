@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, Query } from '@nestjs/common';
 import { SmsService } from './sms.service';
 import { RapportJournalierService } from './rapport-journalier.service';
 import { ResponseService } from 'src/services/response/response.service';
@@ -6,6 +6,8 @@ import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 @Controller('sms')
 export class SmsController {
+  private readonly logger = new Logger(SmsController.name);
+
   constructor(
     private readonly smsService: SmsService,
     private readonly rapportService: RapportJournalierService,
@@ -27,13 +29,20 @@ export class SmsController {
 
   /** Déclencher manuellement les rapports journaliers avec destinataire optionnel */
   @Post('rapport-journalier/envoyer')
-  async envoyerRapports(@Body() body?: { destinataire?: string }) {
+  async envoyerRapports(@Body() body?: { destinataire?: string; structureId?: number }) {
     if (body?.destinataire) {
-      const structureId = this.tenantCtx.getStructureId();
+      // structureId depuis le body (priorité) ou depuis le contexte tenant (JWT)
+      const structureId = body.structureId ? +body.structureId : this.tenantCtx.getStructureId();
+
+      this.logger.log(`[RapportJournalier] destinataire=${body.destinataire} structureId=${structureId}`);
+
       if (!structureId) {
-        return this.responseService.error('Aucun contexte tenant actif');
+        this.logger.warn('[RapportJournalier] structureId introuvable — contexte tenant absent et non fourni dans le body');
+        return this.responseService.error('structureId requis (body ou token JWT)');
       }
+
       const log = await this.rapportService.envoyerRapportPourDestinataire(structureId, body.destinataire);
+      this.logger.log(`[RapportJournalier] résultat: statut=${log?.statut ?? 'null'} erreur=${log?.erreur ?? 'aucune'}`);
       return this.responseService.success('Rapport journalier envoyé', log);
     }
     await this.rapportService.envoyerRapportsJournaliers();

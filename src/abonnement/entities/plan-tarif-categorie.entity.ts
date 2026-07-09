@@ -10,7 +10,7 @@ export class PlanTarifCategorie {
   @Column({ name: 'plan', type: 'varchar', length: 10 })
   plan: PlanType;
 
-  @Column({ name: 'categorie_id' })
+  @Column({ name: 'categorie_id', type: 'integer' })
   categorieId: number;
 
   @Column({ name: 'montant', type: 'real' })

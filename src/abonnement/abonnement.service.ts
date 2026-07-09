@@ -165,7 +165,7 @@ export class AbonnementService implements OnApplicationBootstrap {
         toInsert.push(
           this.planTarifCatRepo.create({
             plan,
-            categorieId: cat.id,
+            categorieId: +cat.id,
             montant: calculerMontantPlan(prixMensuel, plan),
             devise: 'XOF',
             est_actif: true,
