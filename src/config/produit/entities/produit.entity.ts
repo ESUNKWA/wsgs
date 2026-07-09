@@ -15,7 +15,7 @@ export class Produit extends defaultDateGeneratorHelper {
     @Column({
         name: 'r_nom',
         nullable: false,
-        length: 35,
+        length: 255,
         type: 'character varying'
     })
     nom: string;

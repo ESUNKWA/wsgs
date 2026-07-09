@@ -94,10 +94,19 @@ export class TenantService {
     });
 
     await ds.initialize();
+    await this.applyMigrations(ds);
     this.pool.set(structureId, ds);
     return ds;
   }
 
+
+  // ─── Migrations incrémentales ───────────────────────────────────────────────
+  // Chaque instruction est idempotente : elle échoue silencieusement si inutile.
+
+  private async applyMigrations(ds: DataSource): Promise<void> {
+    const run = (sql: string) => ds.query(sql).catch(() => { /* already applied */ });
+    await run(`ALTER TABLE t_produits ALTER COLUMN r_nom TYPE character varying(255)`);
+  }
 
   // ─── Provisionnement ────────────────────────────────────────────────────────
 
