@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get, Res } from '@nestjs/common';
+import { Controller, Logger, Post, Body, Param, Get, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { PdfService } from './pdf.service';
 import { generateHtml } from 'src/common/shared/generateHtml';
@@ -11,6 +11,7 @@ import { formatVente } from 'src/common/helpers/formatVente';
 
 @Controller('pdf')
 export class PdfController {
+  private readonly logger = new Logger(PdfController.name);
 
   constructor(
     private readonly pdfService: PdfService,
@@ -59,7 +60,15 @@ export class PdfController {
   @Get('generate/facture/:id/thermique/print')
   async printFactureThermique(@Param('id') id: string, @Res() res: Response) {
     const vente = await this.venteService.findOne(+id);
+
+    this.logger.log(`[PRINT] venteId=${id} recu_data_raw=${JSON.stringify(vente.recu_data)}`);
+    this.logger.log(`[PRINT] boutique_relation=${JSON.stringify({ id: (vente as any).boutique?.id, nom: (vente as any).boutique?.nom })}`);
+    this.logger.log(`[PRINT] detail_vente_count=${(vente as any).detail_vente?.length}`);
+
     const recu = this.resolveRecuData(vente);
+
+    this.logger.log(`[PRINT] recu_final=${JSON.stringify(recu)}`);
+
     const body = generateHtmlThermique(recu, 'FACTURE');
     // Injecte window.print() pour déclencher l'impression automatiquement
     const html = body.replace('</body>', `<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script></body>`);
@@ -67,10 +76,14 @@ export class PdfController {
     res.send(html);
   }
 
-  /** Fallback: if recu_data stored at creation is missing boutique info, rebuild it from loaded relations. */
+  /** Fallback: si recu_data stocké à la création ne contient pas le nom boutique, on le reconstruit depuis les relations chargées. */
   private resolveRecuData(vente: any): any {
     const recu = vente.recu_data ?? {};
-    if (recu.nom_boutique) return recu;
+    if (recu.nom_boutique) {
+      this.logger.log(`[PRINT] source=recu_data_stored`);
+      return recu;
+    }
+    this.logger.log(`[PRINT] source=fallback_formatVente (recu_data.nom_boutique manquant)`);
     return formatVente(vente);
   }
 

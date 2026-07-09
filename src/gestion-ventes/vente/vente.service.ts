@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { CreateVenteDto } from './dto/create-vente.dto';
 import { In } from 'typeorm';
 import { HistoriqueStock } from 'src/gestion-achats/historique-stock/entities/historique-stock.entity';
@@ -16,6 +16,7 @@ import { EventsService } from 'src/events/events.service';
 
 @Injectable()
 export class VenteService {
+  private readonly logger = new Logger(VenteService.name);
 
   constructor(
     private readonly tenantContext: TenantContextService,
@@ -113,10 +114,18 @@ export class VenteService {
         await manager.save(Produit, produits);
 
         createVenteDto.date_vente = venteSauvegarde?.created_at;
+
+        this.logger.log(`[RECU] venteId=${venteSauvegarde.id} boutique=${JSON.stringify({ id: boutique?.id, nom: boutique?.nom, logo: boutique?.logo ? 'oui' : 'non' })}`);
+        this.logger.log(`[RECU] produits=${JSON.stringify(produits.map(p => ({ id: p.id, nom: p.nom })))}`);
+        this.logger.log(`[RECU] detail_vente=${JSON.stringify(createVenteDto.detail_vente)}`);
+
         const venteFormattee = formatVente(
           { ...createVenteDto, boutique, reference: venteSauvegarde.reference },
           produits.map(p => ({ id: p.id, nom: p.nom })),
         );
+
+        this.logger.log(`[RECU] recu_data produit=${JSON.stringify(venteFormattee)}`);
+
         await manager.update(Vente, venteSauvegarde.id, { recu_data: venteFormattee });
 
         return { idVente: venteSauvegarde.id };
