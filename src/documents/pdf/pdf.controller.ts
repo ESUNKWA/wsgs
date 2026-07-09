@@ -7,6 +7,7 @@ import { generateFactureAbonnement, FactureAbonnementData } from 'src/common/sha
 import { Public } from 'src/gestion-utilisateurs/authentication/auth/public.decorator';
 import { VenteService } from 'src/gestion-ventes/vente/vente.service';
 import { DevisService } from 'src/gestion-ventes/devis/devis.service';
+import { formatVente } from 'src/common/helpers/formatVente';
 
 @Controller('pdf')
 export class PdfController {
@@ -39,28 +40,38 @@ export class PdfController {
   @Public()
   @Get('generate/facture/:id')
   async generateFacture(@Param('id') id: string) {
-    const factureData = await this.venteService.findOne(+id);
-    const html = generateHtml(factureData.recu_data, 'FACTURE');
+    const vente = await this.venteService.findOne(+id);
+    const recu = this.resolveRecuData(vente);
+    const html = generateHtml(recu, 'FACTURE');
     return this.pdfService.generatePdf(html, `facture_${Date.now()}.pdf`);
   }
 
   @Public()
   @Get('generate/facture/:id/thermique')
   async generateFactureThermique(@Param('id') id: string) {
-    const factureData = await this.venteService.findOne(+id);
-    const html = generateHtmlThermique(factureData.recu_data, 'FACTURE');
+    const vente = await this.venteService.findOne(+id);
+    const recu = this.resolveRecuData(vente);
+    const html = generateHtmlThermique(recu, 'FACTURE');
     return this.pdfService.generateThermalPdf(html, `facture_thermique_${Date.now()}.pdf`);
   }
 
   @Public()
   @Get('generate/facture/:id/thermique/print')
   async printFactureThermique(@Param('id') id: string, @Res() res: Response) {
-    const factureData = await this.venteService.findOne(+id);
-    const body = generateHtmlThermique(factureData.recu_data, 'FACTURE');
+    const vente = await this.venteService.findOne(+id);
+    const recu = this.resolveRecuData(vente);
+    const body = generateHtmlThermique(recu, 'FACTURE');
     // Injecte window.print() pour déclencher l'impression automatiquement
     const html = body.replace('</body>', `<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script></body>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
+  }
+
+  /** Fallback: if recu_data stored at creation is missing boutique info, rebuild it from loaded relations. */
+  private resolveRecuData(vente: any): any {
+    const recu = vente.recu_data ?? {};
+    if (recu.nom_boutique) return recu;
+    return formatVente(vente);
   }
 
   @Public()

@@ -113,7 +113,10 @@ export class VenteService {
         await manager.save(Produit, produits);
 
         createVenteDto.date_vente = venteSauvegarde?.created_at;
-        const venteFormattee = formatVente(createVenteDto, produits.map(p => ({ id: p.id, nom: p.nom })));
+        const venteFormattee = formatVente(
+          { ...createVenteDto, boutique, reference: venteSauvegarde.reference },
+          produits.map(p => ({ id: p.id, nom: p.nom })),
+        );
         await manager.update(Vente, venteSauvegarde.id, { recu_data: venteFormattee });
 
         return { idVente: venteSauvegarde.id };
@@ -177,7 +180,7 @@ export class VenteService {
   async findOne(id: number): Promise<Vente> {
     const vente = await this.venteRepository.findOne({
       where: { id },
-      relations: ['detail_vente'],
+      relations: ['detail_vente', 'detail_vente.produit', 'boutique', 'client'],
     });
     if (!vente) throw new NotFoundException('Vente inexistante');
     return vente;
