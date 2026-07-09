@@ -49,6 +49,9 @@ import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.mo
 import { EventsModule } from './events/events.module';
 import { InscriptionModule } from './inscription/inscription.module';
 import { DemandeInscription } from './inscription/entities/demande-inscription.entity';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SmsModule } from './sms/sms.module';
+import { SmsLog } from './sms/entities/sms-log.entity';
 
 @Module({
   imports: [
@@ -66,7 +69,7 @@ import { DemandeInscription } from './inscription/entities/demande-inscription.e
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -97,6 +100,8 @@ import { DemandeInscription } from './inscription/entities/demande-inscription.e
     RetourVenteModule,
     EventsModule,
     InscriptionModule,
+    ScheduleModule.forRoot(),
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [
