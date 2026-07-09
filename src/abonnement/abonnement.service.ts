@@ -35,6 +35,50 @@ const DUREE_PLAN: Record<PlanType, number> = {
   '1_an':   12,
 };
 
+/** Prix mensuel de référence par catégorie (XOF) — Côte d'Ivoire */
+const TARIF_MENSUEL_PAR_CATEGORIE: Record<string, number> = {
+  'Épicerie / Boutique de quartier': 5000,
+  'Maquis / Gargote':                5000,
+  'Café / Bar':                       5000,
+  'Salon de coiffure / Barbier':      5000,
+  'Boulangerie / Pâtisserie':         6000,
+  'Fast-food / Snack':                6000,
+  'Poissonnerie':                     6000,
+  'Pressing / Blanchisserie':         6000,
+  'Boucherie / Charcuterie':          8000,
+  'Boutique de vêtements':            8000,
+  'Cosmétique / Beauté':              8000,
+  'Droguerie':                        8000,
+  'Papeterie / Librairie':            8000,
+  'Superette':                       10000,
+  'Quincaillerie':                   10000,
+  'Pharmacie vétérinaire':           10000,
+  'Électronique / High-tech':        15000,
+  'Restaurant':                      15000,
+  'Supermarché':                     15000,
+  'Matériaux de construction':       20000,
+  'Pharmacie':                       20000,
+  'Station-service / Carburant':     20000,
+  'Clinique / Cabinet médical':      25000,
+  'Grossiste alimentaire':           30000,
+  'Grossiste non alimentaire':       30000,
+  'Importateur / Distributeur':      40000,
+};
+
+/** Taux de réduction appliqué selon la durée du plan */
+const TAUX_REDUCTION_PLAN: Record<PlanType, number> = {
+  '1_mois': 0,
+  '3_mois': 0.05,
+  '6_mois': 0.10,
+  '1_an':   0.17,
+};
+
+function calculerMontantPlan(prixMensuel: number, plan: PlanType): number {
+  const duree  = DUREE_PLAN[plan];
+  const remise = TAUX_REDUCTION_PLAN[plan];
+  return Math.round(prixMensuel * duree * (1 - remise));
+}
+
 const CATEGORIES_SEED: { label: string; ordre: number }[] = [
   // Commerce alimentaire
   { label: 'Superette',                      ordre:  1 },
@@ -89,6 +133,11 @@ export class AbonnementService implements OnApplicationBootstrap {
   // ─── Seed catégories au démarrage ────────────────────────────────────────
 
   async onApplicationBootstrap(): Promise<void> {
+    await this.seedCategories();
+    await this.seedTarifsCategories();
+  }
+
+  private async seedCategories(): Promise<void> {
     const existing = await this.categorieRepo.find({ select: ['label'] });
     const existingLabels = new Set(existing.map(c => c.label));
     const toInsert = CATEGORIES_SEED.filter(c => !existingLabels.has(c.label));
@@ -96,6 +145,37 @@ export class AbonnementService implements OnApplicationBootstrap {
       await this.categorieRepo.save(
         toInsert.map(c => this.categorieRepo.create({ ...c, est_actif: true })),
       );
+    }
+  }
+
+  private async seedTarifsCategories(): Promise<void> {
+    const categories = await this.categorieRepo.find();
+    const existingTarifs = await this.planTarifCatRepo.find({ select: ['plan', 'categorieId'] });
+    const existingSet = new Set(existingTarifs.map(t => `${t.plan}_${t.categorieId}`));
+
+    const plans: PlanType[] = ['1_mois', '3_mois', '6_mois', '1_an'];
+    const toInsert: PlanTarifCategorie[] = [];
+
+    for (const cat of categories) {
+      const prixMensuel = TARIF_MENSUEL_PAR_CATEGORIE[cat.label];
+      if (!prixMensuel) continue;
+
+      for (const plan of plans) {
+        if (existingSet.has(`${plan}_${cat.id}`)) continue;
+        toInsert.push(
+          this.planTarifCatRepo.create({
+            plan,
+            categorieId: cat.id,
+            montant: calculerMontantPlan(prixMensuel, plan),
+            devise: 'XOF',
+            est_actif: true,
+          }),
+        );
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await this.planTarifCatRepo.save(toInsert);
     }
   }
 
