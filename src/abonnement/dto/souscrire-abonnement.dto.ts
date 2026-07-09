@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PlanType } from '../entities/plan-tarif.entity';
 
 export class SouscrireAbonnementDto {
@@ -15,4 +15,13 @@ export class SouscrireAbonnementDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsEnum(['montant', 'pourcentage'])
+  remise_type?: 'montant' | 'pourcentage';
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  remise_valeur?: number;
 }

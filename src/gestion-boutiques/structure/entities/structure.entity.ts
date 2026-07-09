@@ -23,7 +23,10 @@ export class Structure extends defaultDateGeneratorHelper {
     @Column({ name: 'r_logo_path', nullable: true, type: 'character varying', length: 255 })
     logo!: string | null;
 
+    @Column({ name: 'categorie_id', nullable: true, type: 'integer' })
+    categorieId!: number | null;
+
     @ManyToOne(type => Utilisateur, (responsable) => responsable.structure,
         { nullable: true, onDelete: 'SET NULL' })
-    responsable!: Utilisateur; 
+    responsable!: Utilisateur;
 }

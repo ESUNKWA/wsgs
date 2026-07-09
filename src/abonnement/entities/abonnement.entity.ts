@@ -32,4 +32,12 @@ export class Abonnement extends defaultDateGeneratorHelper {
 
   @Column({ name: 'notes', type: 'text', nullable: true })
   notes: string | null;
+
+  /** Frais de mise en place (1er abonnement uniquement). Null sur les renouvellements. */
+  @Column({ name: 'frais_setup_detail', type: 'jsonb', nullable: true })
+  frais_setup_detail: { label: string; montant: number; devise: string }[] | null;
+
+  /** Réduction accordée lors de la souscription. Null si aucune remise. */
+  @Column({ name: 'remise_detail', type: 'jsonb', nullable: true })
+  remise_detail: { type: 'montant' | 'pourcentage'; valeur: number; montant_remise: number } | null;
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AbonnementService } from './abonnement.service';
 import { SouscrireAbonnementDto } from './dto/souscrire-abonnement.dto';
@@ -69,8 +69,11 @@ export class AbonnementController {
   }
 
   @Patch(':id/valider')
-  async valider(@Param('id') id: string) {
-    const data = await this.abonnementService.validerAbonnement(+id);
+  async valider(
+    @Param('id') id: string,
+    @Body() body?: { remise_type?: 'montant' | 'pourcentage'; remise_valeur?: number },
+  ) {
+    const data = await this.abonnementService.validerAbonnement(+id, body);
     return this.responseService.success('Abonnement validé et activé', data);
   }
 
@@ -187,6 +190,92 @@ export class AbonnementController {
     res.setHeader('Content-Disposition', `attachment; filename="contrat-${contratRef}.pdf"`);
     res.setHeader('Content-Length', buffer.length);
     res.end(buffer);
+  }
+
+  // ─── Frais de mise en place (1er abonnement) ─────────────────────────────
+
+  @Get('config/frais-setup')
+  async getFraisSetup() {
+    const data = await this.abonnementService.getFraisSetup();
+    return this.responseService.success('Frais de mise en place', data);
+  }
+
+  @Post('config/frais-setup')
+  async createFraisSetup(
+    @Body() body: { label: string; montant: number; devise?: string; ordre?: number },
+  ) {
+    const data = await this.abonnementService.upsertFraisSetup(null, body);
+    return this.responseService.success('Frais créé', data);
+  }
+
+  @Patch('config/frais-setup/:id')
+  async updateFraisSetup(
+    @Param('id') id: string,
+    @Body() body: { label?: string; montant?: number; devise?: string; est_actif?: boolean; ordre?: number },
+  ) {
+    const data = await this.abonnementService.upsertFraisSetup(+id, body as any);
+    return this.responseService.success('Frais mis à jour', data);
+  }
+
+  @Delete('config/frais-setup/:id')
+  async deleteFraisSetup(@Param('id') id: string) {
+    await this.abonnementService.deleteFraisSetup(+id);
+    return this.responseService.success('Frais supprimé', null);
+  }
+
+  // ─── Catégories de structures ─────────────────────────────────────────────
+
+  @Get('config/categories')
+  async getCategories() {
+    const data = await this.abonnementService.getCategories();
+    return this.responseService.success('Catégories de structures', data);
+  }
+
+  @Post('config/categories')
+  async createCategorie(
+    @Body() body: { label: string; description?: string; ordre?: number },
+  ) {
+    const data = await this.abonnementService.upsertCategorie(null, body);
+    return this.responseService.success('Catégorie créée', data);
+  }
+
+  @Patch('config/categories/:id')
+  async updateCategorie(
+    @Param('id') id: string,
+    @Body() body: { label?: string; description?: string; est_actif?: boolean; ordre?: number },
+  ) {
+    const data = await this.abonnementService.upsertCategorie(+id, body as any);
+    return this.responseService.success('Catégorie mise à jour', data);
+  }
+
+  @Delete('config/categories/:id')
+  async deleteCategorie(@Param('id') id: string) {
+    await this.abonnementService.deleteCategorie(+id);
+    return this.responseService.success('Catégorie supprimée', null);
+  }
+
+  @Get('config/categories/:id/tarifs')
+  async getTarifsCategorie(@Param('id') id: string) {
+    const data = await this.abonnementService.getTarifsCategorie(+id);
+    return this.responseService.success('Tarifs de la catégorie', data);
+  }
+
+  @Post('config/categories/:id/tarifs')
+  async upsertTarifCategorie(
+    @Param('id') id: string,
+    @Body() body: { plan: string; montant: number; devise?: string },
+  ) {
+    const data = await this.abonnementService.upsertTarifCategorie(+id, body.plan as any, body.montant, body.devise);
+    return this.responseService.success('Tarif enregistré', data);
+  }
+
+  @Delete('config/categories/:id/tarifs/:plan')
+  async deleteTarifCategorie(
+    @Param('id') id: string,
+    @Param('plan') plan: string,
+  ) {
+    await this.abonnementService.deleteTarifCategorie(+id, plan as any);
+    return this.responseService.success('Tarif supprimé', null);
   }
 
   // ─── Config boutique supplémentaire ──────────────────────────────────────

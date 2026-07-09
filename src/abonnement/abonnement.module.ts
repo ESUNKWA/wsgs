@@ -7,12 +7,15 @@ import { ConfigTarif } from './entities/config-tarif.entity';
 import { AbonnementService } from './abonnement.service';
 import { AbonnementController } from './abonnement.controller';
 import { ResponseService } from 'src/services/response/response.service';
+import { FraisSetup } from './entities/frais-setup.entity';
+import { CategorieStructure } from './entities/categorie-structure.entity';
+import { PlanTarifCategorie } from './entities/plan-tarif-categorie.entity';
 import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 import { PdfModule } from 'src/documents/pdf/pdf.module';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, Structure]), PdfModule],
+  imports: [TypeOrmModule.forFeature([Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, Structure]), PdfModule],
   providers: [AbonnementService, ResponseService],
   controllers: [AbonnementController],
   exports: [AbonnementService],

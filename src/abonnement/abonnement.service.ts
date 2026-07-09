@@ -12,8 +12,12 @@ import { Abonnement, PlanAbonnement, StatutAbonnement } from './entities/abonnem
 import { PlanTarif, PlanType } from './entities/plan-tarif.entity';
 import { BoutiqueAbonnement } from './entities/boutique-abonnement.entity';
 import { ConfigTarif, TypeTarif } from './entities/config-tarif.entity';
+import { FraisSetup } from './entities/frais-setup.entity';
+import { CategorieStructure } from './entities/categorie-structure.entity';
+import { PlanTarifCategorie } from './entities/plan-tarif-categorie.entity';
 import { SouscrireAbonnementDto } from './dto/souscrire-abonnement.dto';
 import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
+import { Not } from 'typeorm';
 
 const CLE_PRIX_BOUTIQUE = 'prix_boutique_supplementaire';
 
@@ -37,11 +41,14 @@ export class AbonnementService {
   private readonly CACHE_TTL = 5 * 60 * 1000;
 
   constructor(
-    @InjectRepository(Abonnement)          private readonly abonnementRepo:     Repository<Abonnement>,
-    @InjectRepository(PlanTarif)           private readonly planTarifRepo:      Repository<PlanTarif>,
-    @InjectRepository(BoutiqueAbonnement)  private readonly boutiqueAboRepo:    Repository<BoutiqueAbonnement>,
-    @InjectRepository(ConfigTarif)         private readonly configTarifRepo:    Repository<ConfigTarif>,
-    @InjectRepository(Structure)           private readonly structureRepo:      Repository<Structure>,
+    @InjectRepository(Abonnement)          private readonly abonnementRepo:        Repository<Abonnement>,
+    @InjectRepository(PlanTarif)           private readonly planTarifRepo:         Repository<PlanTarif>,
+    @InjectRepository(BoutiqueAbonnement)  private readonly boutiqueAboRepo:       Repository<BoutiqueAbonnement>,
+    @InjectRepository(ConfigTarif)         private readonly configTarifRepo:       Repository<ConfigTarif>,
+    @InjectRepository(FraisSetup)          private readonly fraisSetupRepo:        Repository<FraisSetup>,
+    @InjectRepository(CategorieStructure)  private readonly categorieRepo:         Repository<CategorieStructure>,
+    @InjectRepository(PlanTarifCategorie)  private readonly planTarifCatRepo:      Repository<PlanTarifCategorie>,
+    @InjectRepository(Structure)           private readonly structureRepo:         Repository<Structure>,
   ) {}
 
   // ─── Essai ────────────────────────────────────────────────────────────────
@@ -74,9 +81,6 @@ export class AbonnementService {
     const devis = await this.calculerDevisRenouvellement(dto.structureId, dto.plan);
 
     const maintenant = new Date();
-
-    // Si super_admin : abonnement actif immédiatement avec dates calculées
-    // Sinon : statut en_attente, dates provisoires (recalculées à la validation)
     const statut: StatutAbonnement = isSuperAdmin ? 'actif' : 'en_attente';
 
     let date_debut = maintenant;
@@ -86,19 +90,33 @@ export class AbonnementService {
         order: { date_fin: 'DESC' },
       });
       if (courant?.statut === 'actif' && courant.date_fin > maintenant) {
-        date_debut = courant.date_fin; // prolongation
+        date_debut = courant.date_fin;
       }
     }
 
+    // Calcul de la remise
+    let montantFinal = dto.montant ?? devis.total;
+    let remise_detail: Abonnement['remise_detail'] = null;
+
+    if (dto.remise_type && dto.remise_valeur != null && dto.remise_valeur > 0) {
+      const montant_remise = dto.remise_type === 'pourcentage'
+        ? Math.round(devis.total * dto.remise_valeur / 100)
+        : dto.remise_valeur;
+      montantFinal = Math.max(0, devis.total - montant_remise);
+      remise_detail = { type: dto.remise_type, valeur: dto.remise_valeur, montant_remise };
+    }
+
     const abo = this.abonnementRepo.create({
-      structureId:  dto.structureId,
-      plan:         dto.plan as PlanAbonnement,
+      structureId:        dto.structureId,
+      plan:               dto.plan as PlanAbonnement,
       date_debut,
-      date_fin:     addMonths(date_debut, DUREE_PLAN[dto.plan]),
+      date_fin:           addMonths(date_debut, DUREE_PLAN[dto.plan]),
       statut,
-      montant:      dto.montant ?? devis.total,
-      devise:       devis.devise,
-      notes:        dto.notes ?? null,
+      montant:            montantFinal,
+      devise:             devis.devise,
+      notes:              dto.notes ?? null,
+      frais_setup_detail: devis.frais_setup.length > 0 ? devis.frais_setup : null,
+      remise_detail,
     });
 
     const saved = await this.abonnementRepo.save(abo);
@@ -108,14 +126,16 @@ export class AbonnementService {
 
   // ─── Validation super_admin ───────────────────────────────────────────────
 
-  async validerAbonnement(id: number): Promise<Abonnement> {
+  async validerAbonnement(
+    id: number,
+    remise?: { remise_type?: 'montant' | 'pourcentage'; remise_valeur?: number },
+  ): Promise<Abonnement> {
     const abo = await this.abonnementRepo.findOne({ where: { id } });
     if (!abo) throw new NotFoundException('Abonnement introuvable');
     if (abo.statut !== 'en_attente') {
       throw new BadRequestException(`Cet abonnement n'est pas en attente de validation (statut actuel : ${abo.statut})`);
     }
 
-    // Recalcul des dates depuis le moment de la validation
     const maintenant = new Date();
     const courant = await this.abonnementRepo.findOne({
       where: { structureId: abo.structureId, statut: 'actif' },
@@ -124,9 +144,99 @@ export class AbonnementService {
     const date_debut = courant && courant.date_fin > maintenant ? courant.date_fin : maintenant;
     const date_fin   = addMonths(date_debut, DUREE_PLAN[abo.plan as PlanType]);
 
-    await this.abonnementRepo.update(id, { statut: 'actif', date_debut, date_fin });
+    const updates: Partial<Abonnement> = { statut: 'actif', date_debut, date_fin };
+
+    if (remise?.remise_type && remise.remise_valeur != null && remise.remise_valeur > 0) {
+      const montant_remise = remise.remise_type === 'pourcentage'
+        ? Math.round(abo.montant * remise.remise_valeur / 100)
+        : remise.remise_valeur;
+      updates.montant = Math.max(0, abo.montant - montant_remise);
+      updates.remise_detail = { type: remise.remise_type, valeur: remise.remise_valeur, montant_remise };
+    }
+
+    await this.abonnementRepo.update(id, updates as any);
     this.invalidateCache(abo.structureId);
-    return { ...abo, statut: 'actif', date_debut, date_fin };
+    return { ...abo, ...updates };
+  }
+
+  // ─── Frais de mise en place (1er abonnement) ─────────────────────────────
+
+  async getFraisSetup(): Promise<FraisSetup[]> {
+    return this.fraisSetupRepo.find({ order: { ordre: 'ASC', id: 'ASC' } });
+  }
+
+  async upsertFraisSetup(id: number | null, dto: { label: string; montant: number; devise?: string; est_actif?: boolean; ordre?: number }): Promise<FraisSetup> {
+    if (id) {
+      const existing = await this.fraisSetupRepo.findOne({ where: { id } });
+      if (!existing) throw new NotFoundException('Frais introuvable');
+      await this.fraisSetupRepo.update(id, dto);
+      return { ...existing, ...dto } as FraisSetup;
+    }
+    return this.fraisSetupRepo.save(this.fraisSetupRepo.create({ devise: 'XOF', est_actif: true, ordre: 0, ...dto }));
+  }
+
+  async deleteFraisSetup(id: number): Promise<void> {
+    await this.fraisSetupRepo.delete(id);
+  }
+
+  // ─── Catégories de structures ─────────────────────────────────────────────
+
+  async getCategories(): Promise<(CategorieStructure & { tarifs: PlanTarifCategorie[] })[]> {
+    const cats = await this.categorieRepo.find({ order: { ordre: 'ASC', label: 'ASC' } });
+    return Promise.all(cats.map(async c => ({
+      ...c,
+      tarifs: await this.planTarifCatRepo.find({ where: { categorieId: c.id }, order: { plan: 'ASC' } }),
+    })));
+  }
+
+  async upsertCategorie(
+    id: number | null,
+    dto: { label: string; description?: string; est_actif?: boolean; ordre?: number },
+  ): Promise<CategorieStructure> {
+    if (id) {
+      const existing = await this.categorieRepo.findOne({ where: { id } });
+      if (!existing) throw new NotFoundException('Catégorie introuvable');
+      await this.categorieRepo.update(id, dto);
+      return { ...existing, ...dto } as CategorieStructure;
+    }
+    return this.categorieRepo.save(this.categorieRepo.create({ est_actif: true, ordre: 0, ...dto }));
+  }
+
+  async deleteCategorie(id: number): Promise<void> {
+    await this.planTarifCatRepo.delete({ categorieId: id });
+    await this.categorieRepo.delete(id);
+  }
+
+  async getTarifsCategorie(categorieId: number): Promise<PlanTarifCategorie[]> {
+    return this.planTarifCatRepo.find({ where: { categorieId }, order: { plan: 'ASC' } });
+  }
+
+  async upsertTarifCategorie(
+    categorieId: number,
+    plan: PlanType,
+    montant: number,
+    devise = 'XOF',
+  ): Promise<PlanTarifCategorie> {
+    const existing = await this.planTarifCatRepo.findOne({ where: { categorieId, plan } });
+    if (existing) {
+      await this.planTarifCatRepo.update(existing.id, { montant, devise, est_actif: true });
+      return { ...existing, montant, devise, est_actif: true };
+    }
+    return this.planTarifCatRepo.save(
+      this.planTarifCatRepo.create({ categorieId, plan, montant, devise, est_actif: true }),
+    );
+  }
+
+  async deleteTarifCategorie(categorieId: number, plan: PlanType): Promise<void> {
+    await this.planTarifCatRepo.delete({ categorieId, plan });
+  }
+
+  /** Retourne true si la structure n'a jamais eu d'abonnement payant (hors essai). */
+  private async estPremierAbonnement(structureId: number): Promise<boolean> {
+    const count = await this.abonnementRepo.count({
+      where: { structureId, plan: Not('essai' as PlanAbonnement) },
+    });
+    return count === 0;
   }
 
   // ─── Devis de renouvellement ──────────────────────────────────────────────
@@ -139,13 +249,35 @@ export class AbonnementService {
     config_boutique: { valeur: number; type: TypeTarif };
     prix_boutique_supplementaire: number;
     montant_boutiques_supplementaires: number;
+    frais_setup: { label: string; montant: number; devise: string }[];
+    montant_frais_setup: number;
+    est_premier_abonnement: boolean;
     total: number;
     devise: string;
+    categorie_id: number | null;
+    categorie_label: string | null;
     detail_boutiques: BoutiqueAbonnement[];
   }> {
-    const planTarif = await this.planTarifRepo.findOne({ where: { plan } });
-    const prixBase  = planTarif?.montant ?? 0;
-    const devise    = planTarif?.devise  ?? 'XOF';
+    const planTarif  = await this.planTarifRepo.findOne({ where: { plan } });
+    const structure  = await this.structureRepo.findOne({ where: { id: structureId } });
+    const categorieId = structure?.categorieId ?? null;
+
+    // Tarif catégorie > tarif par défaut
+    let prixBase = planTarif?.montant ?? 0;
+    let devise   = planTarif?.devise  ?? 'XOF';
+    let categorieLabel: string | null = null;
+
+    if (categorieId) {
+      const tarifCat = await this.planTarifCatRepo.findOne({
+        where: { plan, categorieId, est_actif: true },
+      });
+      if (tarifCat) {
+        prixBase = tarifCat.montant;
+        devise   = tarifCat.devise;
+      }
+      const cat = await this.categorieRepo.findOne({ where: { id: categorieId } });
+      categorieLabel = cat?.label ?? null;
+    }
 
     const boutiquesExtra = await this.boutiqueAboRepo.find({
       where: { structureId, est_active: true },
@@ -153,11 +285,18 @@ export class AbonnementService {
     const nbExtra = boutiquesExtra.length;
 
     const config = await this.getConfigBoutiqueSupplementaire();
-    // Si pourcentage : prix par boutique = % du plan de base
     const prixExtra = config.type === 'pourcentage'
       ? Math.round(prixBase * (config.valeur / 100))
       : config.valeur;
     const montantExtra = nbExtra * prixExtra;
+
+    // Frais de mise en place uniquement au 1er abonnement payant
+    const estPremier = await this.estPremierAbonnement(structureId);
+    const fraisSetupItems = estPremier
+      ? (await this.fraisSetupRepo.find({ where: { est_actif: true }, order: { ordre: 'ASC', id: 'ASC' } }))
+          .map(f => ({ label: f.label, montant: f.montant, devise: f.devise }))
+      : [];
+    const montantFraisSetup = fraisSetupItems.reduce((s, f) => s + f.montant, 0);
 
     return {
       plan,
@@ -167,8 +306,13 @@ export class AbonnementService {
       config_boutique: { valeur: config.valeur, type: config.type },
       prix_boutique_supplementaire: prixExtra,
       montant_boutiques_supplementaires: montantExtra,
-      total: prixBase + montantExtra,
+      frais_setup: fraisSetupItems,
+      montant_frais_setup: montantFraisSetup,
+      est_premier_abonnement: estPremier,
+      total: prixBase + montantExtra + montantFraisSetup,
       devise,
+      categorie_id: categorieId,
+      categorie_label: categorieLabel,
       detail_boutiques: boutiquesExtra,
     };
   }
@@ -374,6 +518,14 @@ export class AbonnementService {
 
     const reference = `FACT-${String(abo.structureId).padStart(4, '0')}-${String(abo.id).padStart(6, '0')}`;
 
+    const fraisSetupDetail = abo.frais_setup_detail ?? [];
+    const montantFraisSetup = fraisSetupDetail.reduce((s, f) => s + f.montant, 0);
+    const remiseDetail = abo.remise_detail ?? null;
+    const montantAvantRemise = remiseDetail
+      ? abo.montant + remiseDetail.montant_remise
+      : null;
+    const montantPlanBase = (montantAvantRemise ?? abo.montant) - nbExtra * prixExtra - montantFraisSetup;
+
     return {
       reference,
       date_emission: new Date(),
@@ -383,12 +535,13 @@ export class AbonnementService {
         statut: abo.statut,
         date_debut: abo.date_debut,
         date_fin: abo.date_fin,
+        est_premier_abonnement: fraisSetupDetail.length > 0,
       },
       structure: structure
         ? { id: structure.id, nom: structure.nom, telephone: structure.telephone, email: structure.email, adresse: structure.situation_geo }
         : { id: abo.structureId },
       detail: {
-        plan_base: { label: `Plan ${abo.plan.replace('_', ' ')}`, montant: abo.montant - nbExtra * prixExtra, devise: abo.devise },
+        plan_base: { label: `Plan ${abo.plan.replace('_', ' ')}`, montant: montantPlanBase, devise: abo.devise },
         boutiques_supplementaires: boutiquesExtra.map(b => ({
           boutiqueNom: b.boutiqueNom,
           est_active: b.est_active,
@@ -398,6 +551,10 @@ export class AbonnementService {
         })),
         nb_boutiques_facturees: nbExtra,
         montant_boutiques: nbExtra * prixExtra,
+        frais_setup: fraisSetupDetail,
+        montant_frais_setup: montantFraisSetup,
+        remise: remiseDetail,
+        montant_avant_remise: montantAvantRemise,
         total: abo.montant,
         devise: abo.devise,
       },
@@ -426,6 +583,25 @@ export class AbonnementService {
       en_attente: 'background:#dbeafe;color:#1e40af;',
       essai:      'background:#ede9fe;color:#5b21b6;',
     };
+
+    const fraisSetupLines: any[] = facture.detail.frais_setup ?? [];
+    const lignesFraisSetup = fraisSetupLines.map((f: any, i: number) =>
+      `<tr style="background:${i % 2 === 0 ? '#fff8f0' : '#fef3e8'}">
+        <td style="padding:10px 14px;border:1px solid #ddd;font-style:italic;">⚙ ${f.label}</td>
+        <td style="padding:10px 14px;border:1px solid #ddd;text-align:right;white-space:nowrap;font-style:italic;">${fmt(f.montant, f.devise)}</td>
+      </tr>`).join('');
+
+    const remise = facture.detail.remise;
+    const ligneRemise = remise
+      ? `<tr style="background:#fef9ec;">
+          <td style="padding:10px 14px;border:1px solid #ddd;font-style:italic;color:#b45309;">
+            🏷 Réduction${remise.type === 'pourcentage' ? ` (${remise.valeur}%)` : ' (montant fixe)'}
+          </td>
+          <td style="padding:10px 14px;border:1px solid #ddd;text-align:right;white-space:nowrap;font-style:italic;color:#dc2626;">
+            − ${fmt(remise.montant_remise, facture.detail.devise)}
+          </td>
+        </tr>`
+      : '';
 
     const lignesBoutiques = facture.detail.boutiques_supplementaires
       .filter((b: any) => b.est_active)
@@ -536,13 +712,23 @@ export class AbonnementService {
         <td style="padding:10px 14px;border:1px solid #ddd;">Plan de base — ${facture.abonnement.plan.replace('_', ' ')}</td>
         <td style="padding:10px 14px;border:1px solid #ddd;text-align:right;white-space:nowrap;">${fmt(facture.detail.plan_base.montant, facture.detail.devise)}</td>
       </tr>
+      ${lignesFraisSetup}
       ${lignesBoutiques}
+      ${ligneRemise}
     </tbody>
   </table>
 
   <!-- Total -->
   <div class="totals">
     <table class="totals-table">
+      ${remise ? `<tr>
+        <td style="text-align:right;font-size:10pt;color:#6b7280;">Sous-total</td>
+        <td style="text-align:right;font-size:10pt;color:#6b7280;white-space:nowrap;">${fmt(facture.detail.montant_avant_remise, facture.detail.devise)}</td>
+      </tr>
+      <tr>
+        <td style="text-align:right;font-size:10pt;color:#dc2626;font-style:italic;">Réduction</td>
+        <td style="text-align:right;font-size:10pt;color:#dc2626;font-style:italic;white-space:nowrap;">− ${fmt(remise.montant_remise, facture.detail.devise)}</td>
+      </tr>` : ''}
       <tr class="total-row">
         <td class="total-label">TOTAL À PAYER</td>
         <td class="total-value">${fmt(facture.detail.total, facture.detail.devise)}</td>
@@ -581,6 +767,7 @@ export class AbonnementService {
       f(facture.structure.adresse),
     ].filter(Boolean);
 
+    const fraisSetupLinesContrat: any[] = facture.detail.frais_setup ?? [];
     const lignesBoutiques = facture.detail.boutiques_supplementaires
       .filter((b: any) => b.est_active)
       .map((b: any) => {
@@ -720,12 +907,16 @@ export class AbonnementService {
           <td>Plan de base — ${plan.replace('_', ' ')} (1 boutique incluse)</td>
           <td>${fmt(facture.detail.plan_base.montant, facture.detail.devise)}</td>
         </tr>
+        ${fraisSetupLinesContrat.map((f: any) =>
+          `<tr><td style="font-style:italic;">⚙ ${f.label}</td><td style="font-style:italic;">${fmt(f.montant, f.devise)}</td></tr>`
+        ).join('')}
         ${facture.detail.boutiques_supplementaires.filter((b: any) => b.est_active).map((b: any, i: number) => {
           const label = b.config?.type === 'pourcentage'
             ? `Boutique supplémentaire — ${b.boutiqueNom} (${b.config.valeur}% du plan)`
             : `Boutique supplémentaire — ${b.boutiqueNom}`;
           return `<tr><td>${label}</td><td>${fmt(b.prix_unitaire, b.devise)}</td></tr>`;
         }).join('')}
+        ${facture.detail.remise ? `<tr style="color:#dc2626;font-style:italic;"><td>🏷 Réduction${facture.detail.remise.type === 'pourcentage' ? ` (${facture.detail.remise.valeur}%)` : ' (montant fixe)'}</td><td>− ${fmt(facture.detail.remise.montant_remise, facture.detail.devise)}</td></tr>` : ''}
       </tbody>
       <tfoot>
         <tr>

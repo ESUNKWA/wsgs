@@ -1,4 +1,5 @@
-import { IsNotEmpty } from "class-validator";
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 
 export class CreateStructureDto {
 
@@ -10,4 +11,9 @@ export class CreateStructureDto {
     rccm: string;
     situation_geo: string;
     logo: string;
+
+    @IsOptional()
+    @IsNumber()
+    @Transform(({ value }) => (value != null && value !== '' ? parseInt(value, 10) : null))
+    categorieId?: number | null;
 }

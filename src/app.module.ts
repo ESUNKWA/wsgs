@@ -40,6 +40,9 @@ import { Abonnement } from './abonnement/entities/abonnement.entity';
 import { PlanTarif } from './abonnement/entities/plan-tarif.entity';
 import { BoutiqueAbonnement } from './abonnement/entities/boutique-abonnement.entity';
 import { ConfigTarif } from './abonnement/entities/config-tarif.entity';
+import { FraisSetup } from './abonnement/entities/frais-setup.entity';
+import { CategorieStructure } from './abonnement/entities/categorie-structure.entity';
+import { PlanTarifCategorie } from './abonnement/entities/plan-tarif-categorie.entity';
 import { AbonnementModule } from './abonnement/abonnement.module';
 import { AbonnementGuard } from './abonnement/guards/abonnement.guard';
 import { RetourVenteModule } from './gestion-ventes/retour-vente/retour-vente.module';
@@ -63,7 +66,7 @@ import { DemandeInscription } from './inscription/entities/demande-inscription.e
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, DemandeInscription],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
