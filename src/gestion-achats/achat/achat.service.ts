@@ -27,8 +27,9 @@ export class AchatService {
         }
 
         createAchatDto.reference = ReferenceGeneratorHelper.generate('ACH');
+        const { detail_achat, ...achatData } = createAchatDto as any;
         const achat = manager.create(Achat, {
-          ...createAchatDto,
+          ...achatData,
           user: tenantUser ?? undefined,
         } as any);
         const achatSauvegarde = await manager.save(achat);

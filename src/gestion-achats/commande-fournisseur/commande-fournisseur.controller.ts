@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { CommandeFournisseurService } from './commande-fournisseur.service';
 import { CreateCommandeFournisseurDto } from './dto/create-commande-fournisseur.dto';
 import { UpdateCommandeFournisseurDto } from './dto/update-commande-fournisseur.dto';
@@ -43,9 +44,23 @@ export class CommandeFournisseurController {
   }
 
   @Post(':id/recevoir')
-  async recevoir(@Param('id') id: string) {
-    const data = await this.commandeService.recevoirCommande(+id);
+  async recevoir(
+    @Param('id') id: string,
+    @Body('lignes') lignes: { detail_id: number; quantite_recue: number }[],
+  ) {
+    const data = await this.commandeService.recevoirCommande(+id, lignes ?? []);
     return this.responseService.success('Commande reçue — achat et stock mis à jour', data);
+  }
+
+  @Get(':id/pdf')
+  async bonCommande(@Param('id') id: string, @Res() res: Response) {
+    const buffer = await this.commandeService.generateBonCommande(+id);
+    (res as any).set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="bon-commande-${id}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    (res as any).end(buffer);
   }
 
   @Delete(':id')
