@@ -79,14 +79,24 @@ export class ProduitController {
     return this.produitService.remove(+id);
   }
 
+  @Delete()
+  removeMany(@Body('ids') ids: number[]) {
+    return this.produitService.removeMany(ids);
+  }
+
   @Post('import')
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', importMulterOptions))
   async importFile(
     @UploadedFile() file: Express.Multer.File,
     @Query('boutique') boutique: string,
+    @Query('categorie') categorie?: string,
   ): Promise<DataRequest> {
-    const result = await this.produitService.importFromFile(file, +boutique);
+    const result = await this.produitService.importFromFile(
+      file,
+      +boutique,
+      categorie ? +categorie : undefined,
+    );
     return this.responseService.success(
       `Import terminé : ${result.created} créé(s), ${result.skipped} ignoré(s)`,
       result,

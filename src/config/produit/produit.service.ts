@@ -99,6 +99,11 @@ export class ProduitService {
     return await this.produitRepository.softDelete(id);
   }
 
+  async removeMany(ids: number[]) {
+    if (!ids?.length) throw new BadRequestException('Aucun identifiant fourni');
+    return await this.produitRepository.softDelete(ids);
+  }
+
   async generateCatalogueCodeBarres(boutiqueId: number): Promise<Buffer> {
     const structureId = this.tenantContext.getStructureId();
 
@@ -228,9 +233,15 @@ export class ProduitService {
   async importFromFile(
     file: Express.Multer.File,
     boutiqueId: number,
+    defaultCategorieId?: number,
   ): Promise<{ created: number; skipped: number; errors: string[] }> {
     if (!boutiqueId || isNaN(boutiqueId)) {
       throw new BadRequestException('Veuillez préciser la boutique');
+    }
+
+    let defaultCategorie: Categorie | null = null;
+    if (defaultCategorieId) {
+      defaultCategorie = await this.categorieRepository.findOne({ where: { id: defaultCategorieId } });
     }
 
     const structureId = this.tenantContext.getStructureId();
@@ -274,6 +285,8 @@ export class ProduitService {
           skipped++;
           continue;
         }
+      } else if (defaultCategorie) {
+        categorie = defaultCategorie;
       }
 
       const stockInitial = parseFloat(row['stock_initial'] ?? row['Stock initial'] ?? 0) || 0;
