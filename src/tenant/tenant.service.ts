@@ -31,6 +31,12 @@ import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/util
 import { Profil } from 'src/gestion-utilisateurs/profils/entities/profil.entity';
 import { RetourVente } from 'src/gestion-ventes/retour-vente/entities/retour-vente.entity';
 import { DetailRetourVente } from 'src/gestion-ventes/retour-vente/entities/detail-retour-vente.entity';
+import { TableRestaurant } from 'src/gestion-restaurant/table/entities/table.entity';
+import { Recette } from 'src/gestion-restaurant/recette/entities/recette.entity';
+import { CompositionRecette } from 'src/gestion-restaurant/recette/entities/composition-recette.entity';
+import { CommandeTable } from 'src/gestion-restaurant/commande-table/entities/commande-table.entity';
+import { LigneCommandeTable } from 'src/gestion-restaurant/commande-table/entities/ligne-commande-table.entity';
+import { MenuJour } from 'src/gestion-restaurant/menu-jour/entities/menu-jour.entity';
 
 const PROFILS_SEED = [
   { code: 'admin',                 nom: 'administrateur',        description: 'administrateur' },
@@ -53,6 +59,8 @@ export const TENANT_ENTITIES = [
   SessionCaisse, MouvementCaisse,
   Structure, Utilisateur, Profil,
   RetourVente, DetailRetourVente,
+  TableRestaurant, Recette, CompositionRecette, CommandeTable, LigneCommandeTable,
+  MenuJour,
 ];
 
 @Injectable()
@@ -106,6 +114,94 @@ export class TenantService {
   private async applyMigrations(ds: DataSource): Promise<void> {
     const run = (sql: string) => ds.query(sql).catch(() => { /* already applied */ });
     await run(`ALTER TABLE t_produits ALTER COLUMN r_nom TYPE character varying(255)`);
+
+    // Module restaurant — création des tables si absentes
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_tables_restaurant (
+        id SERIAL PRIMARY KEY,
+        r_numero VARCHAR(20) NOT NULL,
+        r_nom VARCHAR(100),
+        r_capacite INTEGER DEFAULT 4,
+        r_statut VARCHAR(20) DEFAULT 'libre',
+        "boutiqueId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_recettes (
+        id SERIAL PRIMARY KEY,
+        r_nom VARCHAR(150) NOT NULL,
+        r_description TEXT,
+        r_categorie VARCHAR(100),
+        r_prix_vente REAL DEFAULT 0,
+        r_actif BOOLEAN DEFAULT TRUE,
+        "boutiqueId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_compositions_recettes (
+        id SERIAL PRIMARY KEY,
+        r_quantite REAL DEFAULT 1,
+        "recetteId" INTEGER REFERENCES t_recettes(id) ON DELETE CASCADE,
+        "produitId" INTEGER
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_commandes_table (
+        id SERIAL PRIMARY KEY,
+        r_reference VARCHAR(30) UNIQUE NOT NULL,
+        r_statut VARCHAR(20) DEFAULT 'en_cours',
+        r_montant_total REAL DEFAULT 0,
+        r_notes TEXT,
+        "tableId" INTEGER,
+        "boutiqueId" INTEGER,
+        "userId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_lignes_commande_table (
+        id SERIAL PRIMARY KEY,
+        r_quantite INTEGER DEFAULT 1,
+        r_prix_unitaire REAL NOT NULL,
+        r_note VARCHAR(255),
+        "recetteId" INTEGER,
+        "commandeId" INTEGER REFERENCES t_commandes_table(id) ON DELETE CASCADE
+      )`);
+    // Enum en_attente + nouvelles colonnes commande
+    await run(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_enum
+          WHERE enumlabel = 'en_attente'
+            AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 't_commandes_table_r_statut_enum')
+        ) THEN
+          ALTER TYPE t_commandes_table_r_statut_enum ADD VALUE 'en_attente' BEFORE 'en_cours';
+        END IF;
+      END $$`);
+    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_telephone VARCHAR(30)`);
+    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_source VARCHAR(10) DEFAULT 'staff'`);
+    await run(`ALTER TABLE t_tables_restaurant ADD COLUMN IF NOT EXISTS r_appel_serveur BOOLEAN DEFAULT FALSE`);
+
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_menus_jour (
+        id SERIAL PRIMARY KEY,
+        r_date DATE NOT NULL,
+        "boutiqueId" INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP,
+        UNIQUE (r_date, "boutiqueId")
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_menu_jour_recettes (
+        menu_id INTEGER NOT NULL REFERENCES t_menus_jour(id) ON DELETE CASCADE,
+        recette_id INTEGER NOT NULL REFERENCES t_recettes(id) ON DELETE CASCADE,
+        PRIMARY KEY (menu_id, recette_id)
+      )`);
   }
 
   // ─── Provisionnement ────────────────────────────────────────────────────────

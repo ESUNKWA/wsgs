@@ -51,6 +51,11 @@ import { InscriptionModule } from './inscription/inscription.module';
 import { DemandeInscription } from './inscription/entities/demande-inscription.entity';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SmsModule } from './sms/sms.module';
+import { TableRestaurantModule } from './gestion-restaurant/table/table.module';
+import { RecetteModule } from './gestion-restaurant/recette/recette.module';
+import { CommandeTableModule } from './gestion-restaurant/commande-table/commande-table.module';
+import { MenuJourModule } from './gestion-restaurant/menu-jour/menu-jour.module';
+import { PublicMenuModule } from './gestion-restaurant/public-menu/public-menu.module';
 import { SmsLog } from './sms/entities/sms-log.entity';
 
 @Module({
@@ -102,6 +107,11 @@ import { SmsLog } from './sms/entities/sms-log.entity';
     InscriptionModule,
     ScheduleModule.forRoot(),
     SmsModule,
+    TableRestaurantModule,
+    RecetteModule,
+    CommandeTableModule,
+    MenuJourModule,
+    PublicMenuModule,
   ],
   controllers: [AppController],
   providers: [
