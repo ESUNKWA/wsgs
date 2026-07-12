@@ -38,16 +38,30 @@ export class PublicMenuService {
       return this.tenantService.getDataSource(this.bsCache.get(boutiqueId)!);
     }
 
+    // Scan tous les tenants — on collecte tous les candidats pour préférer type=restaurant
     const configs = await this.tenantService.findAll();
+    let fallbackSid: number | null = null;
+    let fallbackDs: any = null;
+
     for (const cfg of configs) {
       try {
         const ds = await this.tenantService.getDataSource(cfg.structureId);
         const found = await ds.getRepository(Boutique).findOne({ where: { id: boutiqueId } });
         if (found) {
-          this.bsCache.set(boutiqueId, cfg.structureId);
-          return ds;
+          if ((found as any).type === 'restaurant') {
+            // Tenant restaurant trouvé → on s'arrête ici
+            this.bsCache.set(boutiqueId, cfg.structureId);
+            return ds;
+          }
+          // Candidat non-restaurant → on le garde en fallback mais on continue
+          if (!fallbackSid) { fallbackSid = cfg.structureId; fallbackDs = ds; }
         }
-      } catch { /* tenant indisponible, on passe au suivant */ }
+      } catch { /* tenant indisponible */ }
+    }
+
+    if (fallbackDs) {
+      this.bsCache.set(boutiqueId, fallbackSid!);
+      return fallbackDs;
     }
 
     throw new BadRequestException('Boutique introuvable');
@@ -103,8 +117,12 @@ export class PublicMenuService {
       })
       .map(r => this.sanitizeRecette(r));
 
+    const rawLogo = (boutique as any).logo;
+    const baseUrl = (process.env.BASE_URL ?? '').replace(/\/$/, '');
+    const logoUrl = rawLogo ? `${baseUrl}/${rawLogo}` : null;
+
     return {
-      boutique: { id: boutique.id, nom: (boutique as any).nom, logo: (boutique as any).logo },
+      boutique: { id: boutique.id, nom: (boutique as any).nom, logo: logoUrl },
       menuDuJour: !!menuJour,
       tables: tables.map(t => ({ id: t.id, numero: t.numero, nom: t.nom, statut: t.statut })),
       plats,
@@ -112,14 +130,19 @@ export class PublicMenuService {
     };
   }
 
-  /** Supprime les infos de stock/composition — le client ne doit pas voir les quantités */
+  /** Supprime les infos de stock/composition — le client ne doit pas voir les quantités.
+   *  L'image est extraite du premier produit de composition (boissons liées au stock). */
   private sanitizeRecette(r: Recette) {
+    const rawImage = (r.compositions?.[0]?.produit as any)?.image ?? null;
+    const baseUrl = (process.env.BASE_URL ?? '').replace(/\/$/, '');
+    const image = rawImage ? `${baseUrl}/${rawImage}` : null;
     return {
-      id:         r.id,
-      nom:        r.nom,
+      id:          r.id,
+      nom:         r.nom,
       description: r.description,
-      categorie:  r.categorie,
-      prix_vente: r.prix_vente,
+      categorie:   r.categorie,
+      prix_vente:  r.prix_vente,
+      image,
     };
   }
 
@@ -151,7 +174,7 @@ export class PublicMenuService {
       .select('COALESCE(MAX(c.numero_ordre), 0)', 'max')
       .where('c.boutique = :b', { b: dto.boutique })
       .andWhere('c.created_at >= :today', { today })
-      .getRawOne<{ max: number }>();
+      .getRawOne() as { max: number } | undefined;
 
     // Détecter si toutes les lignes sont des boissons → pas d'envoi en cuisine
     const recetteIds = dto.lignes.map(l => l.recette);
