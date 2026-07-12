@@ -7,6 +7,7 @@ import { TableRestaurant } from 'src/gestion-restaurant/table/entities/table.ent
 import { CommandeTable } from 'src/gestion-restaurant/commande-table/entities/commande-table.entity';
 import { LigneCommandeTable } from 'src/gestion-restaurant/commande-table/entities/ligne-commande-table.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { TenantService } from 'src/tenant/tenant.service';
 import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator.helper';
 import { EventsService } from 'src/events/events.service';
 
@@ -16,17 +17,20 @@ const CATS_BOISSONS = ['Boissons', 'Alcools', 'Cocktails'];
 export class PublicMenuService {
   constructor(
     private readonly tenantContext: TenantContextService,
+    private readonly tenantService: TenantService,
     private readonly eventsService: EventsService,
   ) {}
 
-  private get ds() { return this.tenantContext.getDataSource(); }
+  private async getDs(structureId: number) {
+    return this.tenantService.getDataSource(structureId);
+  }
 
   private today(): string {
     return new Date().toISOString().split('T')[0];
   }
 
-  async getMenu(boutiqueId: number) {
-    const ds = this.ds;
+  async getMenu(boutiqueId: number, structureId: number) {
+    const ds = await this.getDs(structureId);
 
     const boutique = await ds.getRepository(Boutique).findOne({ where: { id: boutiqueId } });
     if (!boutique) throw new BadRequestException('Boutique introuvable');
@@ -100,6 +104,7 @@ export class PublicMenuService {
 
   async passerCommande(dto: {
     boutique: number;
+    structure: number;
     telephone: string;
     table?: number;
     lignes: { recette: number; quantite: number; prix_unitaire: number; note?: string }[];
@@ -107,7 +112,7 @@ export class PublicMenuService {
     if (!dto.telephone?.trim()) throw new BadRequestException('Numéro de téléphone requis');
     if (!dto.lignes?.length)    throw new BadRequestException('Panier vide');
 
-    const ds = this.ds;
+    const ds = await this.getDs(dto.structure);
     let createdId!: number;
 
     // Calculer le numéro d'ordre du jour avant la transaction
@@ -160,7 +165,7 @@ export class PublicMenuService {
     });
 
     // Charger la commande complète pour l'envoyer via SSE
-    const commande = await this.ds.getRepository(CommandeTable).findOne({
+    const commande = await ds.getRepository(CommandeTable).findOne({
       where: { id: createdId },
       relations: ['table', 'lignes', 'lignes.recette'],
     });
@@ -169,10 +174,11 @@ export class PublicMenuService {
     return { id: createdId, message: 'Commande envoyée — un serveur va vous prendre en charge.' };
   }
 
-  async appelServeur(boutiqueId: number, tableId?: number) {
+  async appelServeur(boutiqueId: number, structureId: number, tableId?: number) {
+    const ds = await this.getDs(structureId);
     let table: TableRestaurant | null = null;
     if (tableId) {
-      const repo = this.ds.getRepository(TableRestaurant);
+      const repo = ds.getRepository(TableRestaurant);
       table = await repo.findOne({ where: { id: tableId, boutique: { id: boutiqueId } } });
       if (table) {
         await repo.update(tableId, { appel_serveur: true });
@@ -185,7 +191,7 @@ export class PublicMenuService {
   }
 
   async acquitterAppel(tableId: number) {
-    await this.ds.getRepository(TableRestaurant).update(tableId, { appel_serveur: false });
+    await this.tenantContext.getDataSource().getRepository(TableRestaurant).update(tableId, { appel_serveur: false });
     return { ok: true };
   }
 }

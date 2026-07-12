@@ -9,14 +9,15 @@ export class PublicMenuController {
 
   /** Retourne le menu du jour + tables pour l'affichage client */
   @Get('menu')
-  async getMenu(@Query('boutique') boutique: string) {
-    return this.publicMenuService.getMenu(+boutique);
+  async getMenu(@Query('boutique') boutique: string, @Query('structure') structure: string) {
+    return this.publicMenuService.getMenu(+boutique, +structure);
   }
 
   /** Client passe une commande via QR */
   @Post('commande')
   async passerCommande(@Body() dto: {
     boutique: number;
+    structure: number;
     telephone: string;
     table?: number;
     lignes: { recette: number; quantite: number; prix_unitaire: number; note?: string }[];
@@ -26,8 +27,8 @@ export class PublicMenuController {
 
   /** Client appelle un serveur */
   @Post('appel-serveur')
-  async appelServeur(@Body('boutique') boutique: number, @Body('table') table?: number) {
-    return this.publicMenuService.appelServeur(+boutique, table ? +table : undefined);
+  async appelServeur(@Body('boutique') boutique: number, @Body('structure') structure: number, @Body('table') table?: number) {
+    return this.publicMenuService.appelServeur(+boutique, +structure, table ? +table : undefined);
   }
 
   /** Personnel acquitte un appel serveur */
