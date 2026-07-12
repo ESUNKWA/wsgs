@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseInterceptors, UploadedFile, Query, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { BoutiqueService } from './boutique.service';
 import { CreateBoutiqueDto } from './dto/create-boutique.dto';
 import { UpdateBoutiqueDto } from './dto/update-boutique.dto';
@@ -38,11 +39,18 @@ export class BoutiqueController {
   @HttpCode(201)
   @UseInterceptors(FileInterceptor('logo', tenantMulterOptions('/logos')))
   async update(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() updateBoutiqueDto: UpdateBoutiqueDto,
     @UploadedFile() logo: Express.Multer.File,
     @Query('structure') structure?: string,
   ): Promise<DataRequest> {
+    const user = (req as any).user;
+    const profilCode: string = user?.profil?.code?.toLowerCase() ?? '';
+    // Responsable_structure ne peut pas changer le type de boutique
+    if (profilCode === 'responsable_structure') {
+      delete (updateBoutiqueDto as any).type;
+    }
     // structure peut venir du query param OU du body (cas super_admin)
     const bodyStructure = (updateBoutiqueDto as any).structure;
     const structureId = structure ? +structure : bodyStructure ? +bodyStructure : undefined;

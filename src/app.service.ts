@@ -10,6 +10,9 @@ const PROFILS_SEED = [
   { code: 'super_admin',           nom: 'Super admin',           description: 'Super admin' },
   { code: 'magasinier',            nom: 'Magasinier',            description: 'Magasinier' },
   { code: 'caissier',              nom: 'Caissier',              description: 'Caissier' },
+  { code: 'vendeur',               nom: 'Vendeur',               description: 'Vendeur — accès POS vente' },
+  { code: 'serveur',               nom: 'Serveur',               description: 'Serveur restaurant — layout mobile' },
+  { code: 'cuisiner',              nom: 'Cuisinier',             description: 'Cuisinier restaurant — layout mobile' },
 ];
 
 @Injectable()
@@ -19,12 +22,6 @@ export class AppService implements OnApplicationBootstrap {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    const [{ count }] = await this.dataSource.query(
-      `SELECT COUNT(*) AS count FROM "t_profils"`,
-    );
-    if (Number(count) > 0) return;
-
-    this.logger.log('Table t_profils vide — insertion des profils par défaut...');
     for (const p of PROFILS_SEED) {
       await this.dataSource.query(
         `INSERT INTO "t_profils" ("r_code","r_nom","r_description","created_at","updated_at","deleted_at")
@@ -33,7 +30,7 @@ export class AppService implements OnApplicationBootstrap {
         [p.code, p.nom, p.description],
       );
     }
-    this.logger.log(`${PROFILS_SEED.length} profils insérés.`);
+    this.logger.log(`Seed profils — ${PROFILS_SEED.length} profils vérifiés.`);
   }
 
   getHello(): string {

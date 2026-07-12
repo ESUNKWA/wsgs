@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { In } from 'typeorm';
 import { CommandeTable, StatutCommandeTable } from './entities/commande-table.entity';
 import { LigneCommandeTable } from './entities/ligne-commande-table.entity';
 import { TableRestaurant } from '../table/entities/table.entity';
@@ -10,6 +11,8 @@ import { ReferenceGeneratorHelper } from 'src/common/helpers/reference-generator
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { EventsService } from 'src/events/events.service';
 
+const CATS_BOISSONS = ['Boissons', 'Alcools', 'Cocktails'];
+
 @Injectable()
 export class CommandeTableService {
   constructor(
@@ -20,7 +23,7 @@ export class CommandeTableService {
   private get ds() { return this.tenantContext.getDataSource(); }
   private get repo() { return this.ds.getRepository(CommandeTable); }
 
-  async findAll(boutiqueId: number, statut?: string) {
+  async findAll(boutiqueId: number, statut?: string, date?: string) {
     if (!boutiqueId) throw new BadRequestException('Boutique requise');
     const qb = this.repo.createQueryBuilder('c')
       .leftJoinAndSelect('c.table', 'table')
@@ -29,11 +32,17 @@ export class CommandeTableService {
       .leftJoinAndSelect('c.user', 'user')
       .where('c.boutique = :b', { b: boutiqueId })
       .andWhere('c.deleted_at IS NULL')
-      // FIFO : numéro d'ordre croissant, puis date de création pour les commandes sans numéro
       .orderBy('c.numero_ordre', 'ASC', 'NULLS LAST')
       .addOrderBy('c.created_at', 'ASC');
 
     if (statut) qb.andWhere('c.statut = :statut', { statut });
+    if (date) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      qb.andWhere('c.created_at BETWEEN :start AND :end', { start, end });
+    }
     return qb.getMany();
   }
 
@@ -68,7 +77,17 @@ export class CommandeTableService {
         tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
       }
 
-      const numeroOrdre = await this.prochainNumeroOrdre(+dto.boutique);
+      // Détecter si toutes les lignes sont des boissons → elles n'ont pas besoin de passer en cuisine
+      const recetteIds: number[] = (dto.lignes ?? []).map((l: any) => +l.recette);
+      let toutBoissons = false;
+      if (recetteIds.length > 0) {
+        const recettesCheck = await manager.find(Recette, { where: { id: In(recetteIds) } });
+        toutBoissons = recettesCheck.length === recetteIds.length &&
+                       recettesCheck.every((r: any) => CATS_BOISSONS.includes(r.categorie ?? ''));
+      }
+
+      const statut = toutBoissons ? 'prete' : 'en_cours';
+      const numeroOrdre = toutBoissons ? null : await this.prochainNumeroOrdre(+dto.boutique);
 
       const { lignes, ...commandeData } = dto;
       const commande = manager.create(CommandeTable, {
@@ -77,7 +96,7 @@ export class CommandeTableService {
         boutique:     { id: +dto.boutique },
         table:        dto.table ? { id: +dto.table } : null,
         user:         tenantUser ?? undefined,
-        statut:       'en_cours',
+        statut,
         numero_ordre: numeroOrdre,
       } as any);
       const saved = await manager.save(commande);
@@ -103,7 +122,9 @@ export class CommandeTableService {
         await manager.update(TableRestaurant, +dto.table, { statut: 'occupee' });
       }
     });
-    return this.findOne(createdId);
+    const commande = await this.findOne(createdId);
+    this.eventsService.emit(+dto.boutique, 'nouvelle_commande', commande);
+    return commande;
   }
 
   async ajouterLignes(id: number, lignes: any[]) {
@@ -194,6 +215,33 @@ export class CommandeTableService {
 
       return this.findOne(id);
     });
+  }
+
+  async findByTable(tableId: number): Promise<CommandeTable[]> {
+    return this.repo.createQueryBuilder('c')
+      .leftJoinAndSelect('c.table', 'table')
+      .leftJoinAndSelect('c.lignes', 'lignes')
+      .leftJoinAndSelect('lignes.recette', 'recette')
+      .where('c.table = :t', { t: tableId })
+      .andWhere('c.statut NOT IN (:...statuts)', { statuts: ['payee', 'annulee'] })
+      .andWhere('c.deleted_at IS NULL')
+      .orderBy('c.created_at', 'ASC')
+      .getMany();
+  }
+
+  async encaisserBatch(ids: number[], libererTable = false): Promise<{ count: number }> {
+    for (const id of ids) {
+      await this.encaisser(id, false);
+    }
+    if (libererTable && ids.length > 0) {
+      const cmd = await this.repo.findOne({ where: { id: ids[0] }, relations: ['table', 'boutique'] });
+      if (cmd?.table) {
+        await this.ds.getRepository(TableRestaurant).update(cmd.table.id, { statut: 'libre' });
+        const boutiqueId = (cmd as any).boutique?.id ?? (cmd as any).boutique;
+        this.eventsService.emit(boutiqueId, 'statut_change', { id: ids[0], statut: 'payee' });
+      }
+    }
+    return { count: ids.length };
   }
 
   async remove(id: number) {

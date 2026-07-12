@@ -46,6 +46,9 @@ const PROFILS_SEED = [
   { code: 'super_admin',           nom: 'Super admin',           description: 'Super admin' },
   { code: 'magasinier',            nom: 'Magasinier',            description: 'Magasinier' },
   { code: 'caissier',              nom: 'Caissier',              description: 'Caissier' },
+  { code: 'vendeur',               nom: 'Vendeur',               description: 'Vendeur — accès POS vente' },
+  { code: 'serveur',               nom: 'Serveur',               description: 'Serveur restaurant — layout mobile' },
+  { code: 'cuisiner',              nom: 'Cuisinier',             description: 'Cuisinier restaurant — layout mobile' },
 ];
 
 export const TENANT_ENTITIES = [
@@ -184,7 +187,18 @@ export class TenantService {
       END $$`);
     await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_telephone VARCHAR(30)`);
     await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_source VARCHAR(10) DEFAULT 'staff'`);
+    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_numero_ordre INTEGER`);
     await run(`ALTER TABLE t_tables_restaurant ADD COLUMN IF NOT EXISTS r_appel_serveur BOOLEAN DEFAULT FALSE`);
+    await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`);
+
+    // Sync profils — upsert all seed profils so existing tenants get new roles
+    for (const p of PROFILS_SEED) {
+      await run(
+        `INSERT INTO "t_profils" ("r_code","r_nom","r_description","created_at","updated_at","deleted_at")
+         VALUES ('${p.code}','${p.nom.replace(/'/g, "''")}','${p.description.replace(/'/g, "''")}',NOW(),NOW(),NULL)
+         ON CONFLICT ("r_code") DO NOTHING`,
+      );
+    }
 
     await run(`
       CREATE TABLE IF NOT EXISTS t_menus_jour (

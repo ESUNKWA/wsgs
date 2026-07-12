@@ -17,15 +17,31 @@ export class CommandeTableController {
   }
 
   @Get()
-  async findAll(@Query('boutique') boutique: string, @Query('statut') statut?: string) {
-    const data = await this.commandeService.findAll(+boutique, statut);
+  async findAll(
+    @Query('boutique') boutique: string,
+    @Query('statut') statut?: string,
+    @Query('date') date?: string,
+  ) {
+    const data = await this.commandeService.findAll(+boutique, statut, date);
     return this.responseService.success('Commandes', data);
+  }
+
+  @Get('table/:tableId')
+  async findByTable(@Param('tableId') tableId: string) {
+    const data = await this.commandeService.findByTable(+tableId);
+    return this.responseService.success('Commandes table', data);
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const data = await this.commandeService.findOne(+id);
     return this.responseService.success('Commande', data);
+  }
+
+  @Post('encaisser-batch')
+  async encaisserBatch(@Body() body: { ids: number[]; liberer_table?: boolean }) {
+    const data = await this.commandeService.encaisserBatch(body.ids, body.liberer_table ?? false);
+    return this.responseService.success('Commandes encaissées', data);
   }
 
   @Post(':id/lignes')

@@ -37,7 +37,18 @@ export class UtilisateursService {
     let tenantProfilId: number | null = null;
     const profilCode = (user as any).profil?.code;
     if (profilCode) {
-      const tenantProfil = await tenantDs.getRepository(Profil).findOne({ where: { code: profilCode } });
+      let tenantProfil = await tenantDs.getRepository(Profil).findOne({ where: { code: profilCode } });
+      if (!tenantProfil) {
+        // Profil absent du tenant — on l'insère depuis la master DB
+        const masterProfil = await this.profilService.findOneByCode(profilCode).catch(() => null);
+        if (masterProfil) {
+          tenantProfil = await tenantDs.getRepository(Profil).save({
+            code: masterProfil.code,
+            nom: masterProfil.nom,
+            description: masterProfil.description,
+          } as Profil);
+        }
+      }
       tenantProfilId = tenantProfil?.id ?? null;
     }
 

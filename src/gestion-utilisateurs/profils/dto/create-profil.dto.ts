@@ -1,7 +1,13 @@
-import { IsNotEmpty } from "class-validator";
+import { IsNotEmpty, IsOptional } from "class-validator";
 
 export class CreateProfilDto {
 
     @IsNotEmpty({message: 'Veuillez saisir le profil'})
-    nom: string
+    nom: string;
+
+    @IsOptional()
+    code?: string;
+
+    @IsOptional()
+    description?: string;
 }

@@ -15,4 +15,5 @@ export class CreateBoutiqueDto {
     structure: number;
 
     gestion_caisse_activee: boolean;
+    type: 'boutique' | 'restaurant';
 }

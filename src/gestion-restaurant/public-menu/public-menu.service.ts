@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { MenuJour } from 'src/gestion-restaurant/menu-jour/entities/menu-jour.entity';
 import { Recette } from 'src/gestion-restaurant/recette/entities/recette.entity';
@@ -118,14 +119,21 @@ export class PublicMenuService {
       .where('c.boutique = :b', { b: dto.boutique })
       .andWhere('c.created_at >= :today', { today })
       .getRawOne<{ max: number }>();
-    const numeroOrdre = (last?.max ?? 0) + 1;
+
+    // Détecter si toutes les lignes sont des boissons → pas d'envoi en cuisine
+    const recetteIds = dto.lignes.map(l => l.recette);
+    const recettesCheck = await ds.getRepository(Recette).find({ where: { id: In(recetteIds) } });
+    const toutBoissons = recettesCheck.length > 0 &&
+      recettesCheck.every(r => CATS_BOISSONS.includes((r as any).categorie ?? ''));
+    const statut = toutBoissons ? 'prete' : 'en_attente';
+    const numeroOrdre = toutBoissons ? null : (last?.max ?? 0) + 1;
 
     await ds.transaction(async (manager) => {
       const ref = ReferenceGeneratorHelper.generate('CMD');
 
       const commande = manager.create(CommandeTable, {
         reference:    ref,
-        statut:       'en_attente' as any,
+        statut:       statut as any,
         telephone:    dto.telephone.trim(),
         source:       'client' as any,
         boutique:     { id: dto.boutique },
