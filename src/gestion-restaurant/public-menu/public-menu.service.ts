@@ -21,16 +21,44 @@ export class PublicMenuService {
     private readonly eventsService: EventsService,
   ) {}
 
-  private async getDs(structureId: number) {
-    return this.tenantService.getDataSource(structureId);
+  /** Cache boutique→structure pour éviter de rescanner les tenants à chaque requête */
+  private readonly bsCache = new Map<number, number>();
+
+  /**
+   * Résout le DataSource tenant.
+   * - Si structureId est valide, route directement.
+   * - Sinon (anciens QR codes sans &structure=), scanne tous les tenants actifs.
+   */
+  private async getDs(boutiqueId: number, structureId?: number | null) {
+    if (structureId && !isNaN(structureId)) {
+      return this.tenantService.getDataSource(structureId);
+    }
+
+    if (this.bsCache.has(boutiqueId)) {
+      return this.tenantService.getDataSource(this.bsCache.get(boutiqueId)!);
+    }
+
+    const configs = await this.tenantService.findAll();
+    for (const cfg of configs) {
+      try {
+        const ds = await this.tenantService.getDataSource(cfg.structureId);
+        const found = await ds.getRepository(Boutique).findOne({ where: { id: boutiqueId } });
+        if (found) {
+          this.bsCache.set(boutiqueId, cfg.structureId);
+          return ds;
+        }
+      } catch { /* tenant indisponible, on passe au suivant */ }
+    }
+
+    throw new BadRequestException('Boutique introuvable');
   }
 
   private today(): string {
     return new Date().toISOString().split('T')[0];
   }
 
-  async getMenu(boutiqueId: number, structureId: number) {
-    const ds = await this.getDs(structureId);
+  async getMenu(boutiqueId: number, structureId?: number | null) {
+    const ds = await this.getDs(boutiqueId, structureId);
 
     const boutique = await ds.getRepository(Boutique).findOne({ where: { id: boutiqueId } });
     if (!boutique) throw new BadRequestException('Boutique introuvable');
@@ -104,7 +132,7 @@ export class PublicMenuService {
 
   async passerCommande(dto: {
     boutique: number;
-    structure: number;
+    structure?: number;
     telephone: string;
     table?: number;
     lignes: { recette: number; quantite: number; prix_unitaire: number; note?: string }[];
@@ -112,7 +140,7 @@ export class PublicMenuService {
     if (!dto.telephone?.trim()) throw new BadRequestException('Numéro de téléphone requis');
     if (!dto.lignes?.length)    throw new BadRequestException('Panier vide');
 
-    const ds = await this.getDs(dto.structure);
+    const ds = await this.getDs(dto.boutique, dto.structure);
     let createdId!: number;
 
     // Calculer le numéro d'ordre du jour avant la transaction
@@ -174,8 +202,8 @@ export class PublicMenuService {
     return { id: createdId, message: 'Commande envoyée — un serveur va vous prendre en charge.' };
   }
 
-  async appelServeur(boutiqueId: number, structureId: number, tableId?: number) {
-    const ds = await this.getDs(structureId);
+  async appelServeur(boutiqueId: number, structureId?: number, tableId?: number) {
+    const ds = await this.getDs(boutiqueId, structureId);
     let table: TableRestaurant | null = null;
     if (tableId) {
       const repo = ds.getRepository(TableRestaurant);
