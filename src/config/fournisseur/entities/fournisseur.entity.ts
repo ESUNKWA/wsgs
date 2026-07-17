@@ -6,66 +6,66 @@ import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entit
 @Entity('t_fournisseurs')
 export class Fournisseur extends defaultDateGeneratorHelper {
 
-    @PrimaryGeneratedColumn({unsigned: true})
-    id: number;
+    @PrimaryGeneratedColumn({ unsigned: true })
+    id!: number;
 
     @Index()
     @Column({
-        name: 'r_nom', 
-        nullable: false, 
+        name: 'r_nom',
+        nullable: false,
         type: 'character varying',
         length: 35,
         unique: false
     })
-    nom: string;
+    nom!: string;
     
     @Column({
-        name: 'r_addresse_geo', 
-        nullable: true, 
+        name: 'r_addresse_geo',
+        nullable: true,
         type: 'character varying'
     })
-    addresse_geo: string;
+    addresse_geo!: string;
 
     @Column({
-        name: 'r_contact', 
-        nullable: false, 
+        name: 'r_contact',
+        nullable: false,
         type: 'character varying',
         length: 20,
         unique: false
     })
-    contact: string;
+    contact!: string;
 
     @Column({
-        name: 'r_email', 
-        nullable: true, 
+        name: 'r_email',
+        nullable: true,
         type: 'character varying'
     })
-    email: string;
+    email!: string;
 
     @Column({
-        name: 'r_interlocuteur', 
-        nullable: true, 
+        name: 'r_interlocuteur',
+        nullable: true,
         type: 'character varying',
         length: 35
     })
-    interlocuteur: string
+    interlocuteur!: string;
 
     @Column({
-        name: 'r_contact_interlocuteur', 
-        nullable: true, 
+        name: 'r_contact_interlocuteur',
+        nullable: true,
         type: 'character varying',
         length: 20,
         unique: false
     })
-    contact_interlocuteur: string
+    contact_interlocuteur!: string;
 
     @OneToMany(
         type => Achat,
         (achat) => achat.fournisseur,
-        {onDelete: 'CASCADE'}
+        { onDelete: 'CASCADE' }
     )
-    achat: Achat[];
+    achat!: Achat[];
 
     @ManyToOne(() => Boutique, (boutique) => boutique.fournisseur, { cascade: true })
-    boutique: Boutique;
+    boutique!: Boutique;
 }

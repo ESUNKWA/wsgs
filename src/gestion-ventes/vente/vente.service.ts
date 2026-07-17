@@ -71,9 +71,17 @@ export class VenteService {
           }
         }
 
+        // Résoudre le vendeur réel (peut être différent du caissier connecté)
+        const vendeurTel = String((createVenteDto as any).vendeur_tel ?? '').trim();
+        let vendeur: Utilisateur | null = null;
+        if (vendeurTel) {
+          vendeur = await manager.findOne(Utilisateur, { where: { telephone: vendeurTel } });
+        }
+
         const vente = manager.create(Vente, {
           ...createVenteDto,
           user: tenantUser ?? undefined,
+          vendeur: vendeur ?? tenantUser ?? undefined,
           session_caisse: sessionActive,
         } as any);
         const venteSauvegarde = await manager.save(vente);
@@ -218,8 +226,15 @@ export class VenteService {
           if (cl) resolvedClient = await manager.save(cl);
         }
 
+        // Résoudre le vendeur réel si fourni
+        const vendeurTelU = String(updateVenteDto.vendeur_tel ?? '').trim();
+        let vendeurU: Utilisateur | null = null;
+        if (vendeurTelU) {
+          vendeurU = await manager.findOne(Utilisateur, { where: { telephone: vendeurTelU } });
+        }
+
         // Séparer les champs scalaires des relations pour éviter les violations FK
-        const { user: _u, boutique, session_caisse, client: _c, clientdata: _cd, detail_vente, ...scalarFields } = updateVenteDto;
+        const { user: _u, vendeur_tel: _vt, boutique, session_caisse, client: _c, clientdata: _cd, detail_vente, ...scalarFields } = updateVenteDto;
         const boutiqueId = typeof boutique === 'object' ? boutique?.id : boutique;
         const sessionId  = typeof session_caisse === 'object' ? session_caisse?.id : session_caisse;
 
@@ -228,6 +243,8 @@ export class VenteService {
 
         // Affecter les relations résolues
         if (tenantUser)     vente.user          = tenantUser;
+        if (vendeurU)       vente.vendeur        = vendeurU;
+        else if (tenantUser && !vente.vendeur) vente.vendeur = tenantUser;
         if (boutiqueId)     vente.boutique       = { id: boutiqueId } as any;
         if (sessionId)      vente.session_caisse = { id: sessionId } as any;
         if (resolvedClient) vente.client         = resolvedClient;

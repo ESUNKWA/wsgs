@@ -37,6 +37,8 @@ import { CompositionRecette } from 'src/gestion-restaurant/recette/entities/comp
 import { CommandeTable } from 'src/gestion-restaurant/commande-table/entities/commande-table.entity';
 import { LigneCommandeTable } from 'src/gestion-restaurant/commande-table/entities/ligne-commande-table.entity';
 import { MenuJour } from 'src/gestion-restaurant/menu-jour/entities/menu-jour.entity';
+import { TransfertStock } from 'src/gestion-achats/transfert-stock/entities/transfert-stock.entity';
+import { LigneTransfertStock } from 'src/gestion-achats/transfert-stock/entities/ligne-transfert-stock.entity';
 
 const PROFILS_SEED = [
   { code: 'admin',                 nom: 'administrateur',        description: 'administrateur' },
@@ -64,6 +66,7 @@ export const TENANT_ENTITIES = [
   RetourVente, DetailRetourVente,
   TableRestaurant, Recette, CompositionRecette, CommandeTable, LigneCommandeTable,
   MenuJour,
+  TransfertStock, LigneTransfertStock,
 ];
 
 @Injectable()
@@ -216,6 +219,94 @@ export class TenantService {
         recette_id INTEGER NOT NULL REFERENCES t_recettes(id) ON DELETE CASCADE,
         PRIMARY KEY (menu_id, recette_id)
       )`);
+
+    // Module transfert de stock entrepôt → boutiques
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_transferts_stock (
+        id SERIAL PRIMARY KEY,
+        r_reference VARCHAR(30) UNIQUE NOT NULL,
+        r_statut VARCHAR(20) DEFAULT 'brouillon',
+        r_notes TEXT,
+        r_date_envoi TIMESTAMP,
+        r_date_reception TIMESTAMP,
+        "boutiqueSourceId" INTEGER,
+        "boutiqueDestinationId" INTEGER,
+        "utilisateurId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_lignes_transfert_stock (
+        id SERIAL PRIMARY KEY,
+        r_quantite REAL NOT NULL,
+        "transfertId" INTEGER REFERENCES t_transferts_stock(id) ON DELETE CASCADE,
+        "produitId" INTEGER
+      )`);
+
+    // Colonne r_transfert_id sur l'historique de stock (traçabilité transferts)
+    await run(`ALTER TABLE t_historique_stock ADD COLUMN IF NOT EXISTS r_transfert_id INTEGER`);
+
+    // Convertir r_source de enum → varchar pour accepter la valeur 'transfert'
+    await run(`ALTER TABLE t_historique_stock ALTER COLUMN r_source TYPE VARCHAR(20) USING r_source::text`);
+
+    // Vendeur réel sur la vente (peut différer du caissier connecté)
+    await run(`ALTER TABLE t_ventes ADD COLUMN IF NOT EXISTS "vendeurId" INTEGER REFERENCES utilisateurs(id)`);
+
+    // Backfill boutiqueId NULL sur les fournisseurs existants → première boutique du tenant
+    await run(`
+      UPDATE t_fournisseurs
+      SET "boutiqueId" = (SELECT id FROM t_boutiques ORDER BY id ASC LIMIT 1)
+      WHERE "boutiqueId" IS NULL
+        AND EXISTS (SELECT 1 FROM t_boutiques)
+    `);
+
+    // Migrer la contrainte unique globale sur r_nom → unique composite (r_nom, boutiqueId)
+    // afin de permettre le même nom de catégorie dans différentes boutiques.
+    await run(`
+      DO $$
+      DECLARE c_name TEXT;
+      DECLARE nom_attnum smallint;
+      BEGIN
+        SELECT attnum INTO nom_attnum
+        FROM pg_attribute
+        WHERE attrelid = 't_categorie'::regclass AND attname = 'r_nom';
+
+        -- Supprimer toutes les contraintes UNIQUE portant uniquement sur r_nom
+        LOOP
+          SELECT conname INTO c_name
+          FROM pg_constraint
+          WHERE conrelid = 't_categorie'::regclass
+            AND contype = 'u'
+            AND conkey = ARRAY[nom_attnum];
+          EXIT WHEN c_name IS NULL;
+          EXECUTE format('ALTER TABLE t_categorie DROP CONSTRAINT %I', c_name);
+        END LOOP;
+
+        -- Supprimer les index UNIQUE résiduels sur r_nom seul (sans contrainte associée)
+        LOOP
+          SELECT cls.relname INTO c_name
+          FROM pg_index idx
+          JOIN pg_class cls ON cls.oid = idx.indexrelid
+          LEFT JOIN pg_constraint con ON con.conindid = idx.indexrelid
+          WHERE idx.indrelid = 't_categorie'::regclass
+            AND idx.indisunique
+            AND idx.indnkeyatts = 1
+            AND idx.indkey[0] = nom_attnum
+            AND con.oid IS NULL;
+          EXIT WHEN c_name IS NULL;
+          EXECUTE format('DROP INDEX IF EXISTS %I', c_name);
+        END LOOP;
+
+        -- Ajouter la contrainte composite (r_nom, boutiqueId)
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 't_categorie'::regclass AND conname = 'UQ_cat_nom_boutique'
+        ) THEN
+          ALTER TABLE t_categorie ADD CONSTRAINT "UQ_cat_nom_boutique" UNIQUE (r_nom, "boutiqueId");
+        END IF;
+      END $$
+    `);
   }
 
   // ─── Provisionnement ────────────────────────────────────────────────────────

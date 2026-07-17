@@ -45,7 +45,7 @@ export class Boutique {
     categorie!: Categorie;
 
     @Column({ name: 'r_type', type: 'varchar', length: 20, default: 'boutique' })
-    type!: 'boutique' | 'restaurant';
+    type!: 'boutique' | 'restaurant' | 'entrepot';
 
     @Column({ name: 'r_gestion_caisse_activee', type: 'boolean', default: false })
     gestion_caisse_activee!: boolean;

@@ -51,6 +51,21 @@ export class CategorieController {
     return await this.categorieService.remove(+id);
   }
 
+  @Post('copier')
+  @HttpCode(200)
+  async copierVersBoutiques(
+    @Body() body: { sourceBoutiqueId: number; targetBoutiqueIds: number[] },
+  ): Promise<DataRequest> {
+    const result = await this.categorieService.copierVersBoutiques(
+      body.sourceBoutiqueId,
+      body.targetBoutiqueIds,
+    );
+    return this.responseService.success(
+      `Copie terminée : ${result.created} créée(s), ${result.alreadyExists} déjà existante(s)`,
+      result,
+    );
+  }
+
   @Post('import')
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', importMulterOptions))

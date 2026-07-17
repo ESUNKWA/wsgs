@@ -575,6 +575,12 @@ export class AbonnementService implements OnApplicationBootstrap {
   // ─── Période d'essai ─────────────────────────────────────────────────────
 
   async isEnEssai(structureId: number): Promise<boolean> {
+    // Si un plan payant actif existe, la structure n'est pas en essai
+    const payant = await this.abonnementRepo.findOne({
+      where: { structureId, statut: 'actif' as StatutAbonnement, plan: Not('essai' as PlanAbonnement) },
+    });
+    if (payant) return false;
+
     const abo = await this.abonnementRepo.findOne({
       where: { structureId },
       order: { date_fin: 'DESC' },

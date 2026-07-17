@@ -9,11 +9,13 @@ import { JwtStrategy } from './auth/jwt.strategy';
 import { ProfilsService } from '../profils/profils.service';
 import { Profil } from '../profils/entities/profil.entity';
 import { TenantModule } from 'src/tenant/tenant.module';
+import { ModuleStructureModule } from 'src/modules/module-structure.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Utilisateur, Profil]),
     TenantModule,
+    ModuleStructureModule,
   ],
   controllers: [AuthenticationController],
   providers: [AuthenticationService, JwtService, UtilisateursService, JwtStrategy, ProfilsService]

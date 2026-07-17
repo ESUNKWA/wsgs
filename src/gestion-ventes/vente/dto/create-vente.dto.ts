@@ -30,6 +30,7 @@ export class CreateVenteDto {
     details_paiement: any;
 
     user: any;
+    vendeur_tel: string | null;
     date_vente: any;
     caisier: any;
     recu_data: any;

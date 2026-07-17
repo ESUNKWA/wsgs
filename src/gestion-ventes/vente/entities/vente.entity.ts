@@ -43,6 +43,10 @@ export class Vente extends defaultDateGeneratorHelper {
     @ManyToOne(type => Utilisateur, {eager: false, nullable: false})
     user: Utilisateur;
 
+    /** Vendeur réel — peut différer de `user` quand un gérant saisit pour un vendeur */
+    @ManyToOne(type => Utilisateur, {eager: false, nullable: true})
+    vendeur: Utilisateur | null;
+
     @OneToMany(
         type => DetailVente,
         (detail_vente) => detail_vente.vente,

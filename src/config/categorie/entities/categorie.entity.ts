@@ -5,7 +5,7 @@ import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn, Un
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 @Entity('t_categorie')
-@Unique(['nom'])
+@Unique(['nom', 'boutique'])
 export class Categorie extends defaultDateGeneratorHelper {
     @PrimaryGeneratedColumn()
     id: number;
@@ -16,7 +16,6 @@ export class Categorie extends defaultDateGeneratorHelper {
         type: 'character varying',
         length: 35,
         nullable: false,
-        unique: true
     })
     nom: string;
 

@@ -3,6 +3,7 @@ import { CreateFournisseurDto } from './dto/create-fournisseur.dto';
 import { UpdateFournisseurDto } from './dto/update-fournisseur.dto';
 import { Fournisseur } from './entities/fournisseur.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { DeepPartial } from 'typeorm';
 
 @Injectable()
 export class FournisseurService {
@@ -15,7 +16,11 @@ export class FournisseurService {
 
   async create(createFournisseurDto: CreateFournisseurDto): Promise<Fournisseur> {
     try {
-      return await this.fournisseurRepository.save(createFournisseurDto);
+      const { boutique, ...rest } = createFournisseurDto as any;
+      const data: DeepPartial<Fournisseur> = boutique
+        ? { ...rest, boutique: { id: Number(boutique) } }
+        : { ...rest };
+      return await this.fournisseurRepository.save(data);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
@@ -25,6 +30,7 @@ export class FournisseurService {
     return await this.fournisseurRepository.find({ order: { nom: 'ASC' } });
   }
 
+  
   async findByBoutique(id: number, page = 1, limit = 50) {
     const skip = (page - 1) * limit;
     const [items, total] = await this.fournisseurRepository.findAndCount({
@@ -44,7 +50,11 @@ export class FournisseurService {
 
   async update(id: number, updateFournisseurDto: UpdateFournisseurDto): Promise<Fournisseur> {
     try {
-      const fournisseur = await this.fournisseurRepository.preload({ id, ...updateFournisseurDto });
+      const { boutique, ...rest } = updateFournisseurDto as any;
+      const payload: DeepPartial<Fournisseur> = boutique
+        ? { ...rest, boutique: { id: Number(boutique) } }
+        : { ...rest };
+      const fournisseur = await this.fournisseurRepository.preload({ id, ...payload });
       if (!fournisseur) throw new NotFoundException('Fournisseur inexistant');
       return await this.fournisseurRepository.save(fournisseur);
     } catch (error) {

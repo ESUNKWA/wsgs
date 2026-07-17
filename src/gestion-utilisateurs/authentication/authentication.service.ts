@@ -7,6 +7,7 @@ import { TenantService } from 'src/tenant/tenant.service';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
 import { AbonnementService } from 'src/abonnement/abonnement.service';
+import { ModuleStructureService } from 'src/modules/module-structure.service';
 
 @Injectable()
 export class AuthenticationService {
@@ -16,6 +17,7 @@ export class AuthenticationService {
     private jwtService: JwtService,
     private readonly tenantService: TenantService,
     private readonly abonnementService: AbonnementService,
+    private readonly moduleService: ModuleStructureService,
   ) {}
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
@@ -117,12 +119,18 @@ export class AuthenticationService {
       ? await this.abonnementService.getAbonnement(structureId).catch(() => null)
       : null;
 
+    // Modules actifs pour la structure
+    const modules = structureId
+      ? await this.moduleService.getActiveModules(structureId).catch(() => [])
+      : [];
+
     return {
       utilisateur: isManager
         ? { ...utilisateur, boutiques }
         : { ...utilisateur, boutique },
       access_token,
       abonnement,
+      modules,
     };
   }
 

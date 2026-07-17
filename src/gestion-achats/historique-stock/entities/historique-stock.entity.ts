@@ -6,7 +6,7 @@ import { Vente } from "src/gestion-ventes/vente/entities/vente.entity";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 export type Mouvement = "entree" | "sortie";
-export type Source = "achat" | "vente" | "ajustement" | "retour";
+export type Source = "achat" | "vente" | "ajustement" | "retour" | "transfert";
 
 @Entity('t_historique_stock')
 export class HistoriqueStock extends defaultDateGeneratorHelper {
@@ -25,7 +25,7 @@ export class HistoriqueStock extends defaultDateGeneratorHelper {
     @Column({name: 'r_quantite', type: 'integer', nullable: false})
     quantite: number;
     
-    @Column({name: 'r_source',type: "enum",enum: ["achat", "vente", "ajustement", "retour"], default: "achat", comment: 'Pour savoir si on à fait un achat ou une vente'})
+    @Column({name: 'r_source', type: 'varchar', length: 20, default: 'achat', comment: 'achat | vente | ajustement | retour | transfert'})
     source: Source;
     
     @ManyToOne(type=> Produit, (produit) => produit.historique_stock, {eager: true})
@@ -45,4 +45,7 @@ export class HistoriqueStock extends defaultDateGeneratorHelper {
 
     @ManyToOne(() => Utilisateur, { nullable: true, eager: true })
     utilisateur: Utilisateur;
+
+    @Column({ name: 'r_transfert_id', type: 'integer', nullable: true })
+    transfert_id: number | null;
 }

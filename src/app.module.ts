@@ -57,6 +57,9 @@ import { CommandeTableModule } from './gestion-restaurant/commande-table/command
 import { MenuJourModule } from './gestion-restaurant/menu-jour/menu-jour.module';
 import { PublicMenuModule } from './gestion-restaurant/public-menu/public-menu.module';
 import { SmsLog } from './sms/entities/sms-log.entity';
+import { TransfertStockModule } from './gestion-achats/transfert-stock/transfert-stock.module';
+import { ModuleStructure } from './modules/entities/module-structure.entity';
+import { ModuleStructureModule } from './modules/module-structure.module';
 
 @Module({
   imports: [
@@ -74,7 +77,7 @@ import { SmsLog } from './sms/entities/sms-log.entity';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, ModuleStructure],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -112,6 +115,8 @@ import { SmsLog } from './sms/entities/sms-log.entity';
     CommandeTableModule,
     MenuJourModule,
     PublicMenuModule,
+    TransfertStockModule,
+    ModuleStructureModule,
   ],
   controllers: [AppController],
   providers: [

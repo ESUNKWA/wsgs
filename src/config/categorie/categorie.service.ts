@@ -52,6 +52,43 @@ export class CategorieService {
     return await this.categorieRepository.softDelete(id);
   }
 
+  async copierVersBoutiques(
+    sourceBoutiqueId: number,
+    targetBoutiqueIds: number[],
+  ): Promise<{ created: number; alreadyExists: number }> {
+    if (!sourceBoutiqueId) throw new BadRequestException('Boutique source requise');
+    if (!targetBoutiqueIds?.length) throw new BadRequestException('Sélectionnez au moins une boutique cible');
+
+    const categories = await this.categorieRepository.find({
+      where: { boutique: { id: sourceBoutiqueId } },
+      order: { nom: 'ASC' },
+    });
+
+    let created = 0;
+    let alreadyExists = 0;
+
+    for (const targetId of targetBoutiqueIds) {
+      for (const cat of categories) {
+        try {
+          await this.categorieRepository.save({
+            nom: cat.nom,
+            description: cat.description,
+            boutique: { id: targetId },
+          });
+          created++;
+        } catch (error: any) {
+          if (error.code === '23505') {
+            alreadyExists++;
+          } else {
+            throw new InternalServerErrorException(error.message);
+          }
+        }
+      }
+    }
+
+    return { created, alreadyExists };
+  }
+
   async importFromFile(
     file: Express.Multer.File,
     boutiqueId: number,
