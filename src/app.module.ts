@@ -61,6 +61,8 @@ import { TransfertStockModule } from './gestion-achats/transfert-stock/transfert
 import { BonSortieModule } from './gestion-achats/bon-sortie/bon-sortie.module';
 import { ModuleStructure } from './modules/entities/module-structure.entity';
 import { ModuleStructureModule } from './modules/module-structure.module';
+import { ConfigurationEcran } from './configuration-ecran/entities/configuration-ecran.entity';
+import { ConfigurationEcranModule } from './configuration-ecran/configuration-ecran.module';
 
 @Module({
   imports: [
@@ -78,7 +80,7 @@ import { ModuleStructureModule } from './modules/module-structure.module';
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, ModuleStructure],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, ModuleStructure, ConfigurationEcran],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -119,6 +121,7 @@ import { ModuleStructureModule } from './modules/module-structure.module';
     TransfertStockModule,
     BonSortieModule,
     ModuleStructureModule,
+    ConfigurationEcranModule,
   ],
   controllers: [AppController],
   providers: [

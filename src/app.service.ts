@@ -1,6 +1,7 @@
 import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
+import { ConfigurationEcran } from './configuration-ecran/entities/configuration-ecran.entity';
 
 const PROFILS_SEED = [
   { code: 'admin',                 nom: 'Administrateur',        description: 'Administrateur' },
@@ -31,6 +32,7 @@ export class AppService implements OnApplicationBootstrap {
       );
     }
     this.logger.log(`Seed profils — ${PROFILS_SEED.length} profils vérifiés.`);
+    await this.seedConfigurationsEcran();
 
     // Migration master DB : tous les utilisateurs existants doivent changer leur mot de passe
     // sauf le super_admin (is_admin = true)
@@ -43,6 +45,51 @@ export class AppService implements OnApplicationBootstrap {
     `);
     // Garantir que le super_admin reste toujours à false
     await run(`UPDATE utilisateurs SET r_must_change_password = FALSE WHERE r_is_admin = TRUE`);
+  }
+
+  private async seedConfigurationsEcran(): Promise<void> {
+    const repo = this.dataSource.getRepository(ConfigurationEcran);
+
+    const defaults: Array<{ boutique_type: string | null; profil_code: string; ecran_cible: string }> = [
+      // ── Super admin (pas de boutique) ──────────────────────────
+      { boutique_type: null, profil_code: 'super_admin',  ecran_cible: 'ekwatech' },
+
+      // ── Boutique classique ──────────────────────────────────────
+      { boutique_type: 'boutique', profil_code: 'admin',      ecran_cible: 'dashboard' },
+      { boutique_type: 'boutique', profil_code: 'gerant',     ecran_cible: 'dashboard' },
+      { boutique_type: 'boutique', profil_code: 'magasinier', ecran_cible: 'dashboard' },
+      { boutique_type: 'boutique', profil_code: 'user',       ecran_cible: 'dashboard' },
+      { boutique_type: 'boutique', profil_code: 'vendeur',    ecran_cible: 'pos' },
+      { boutique_type: 'boutique', profil_code: 'caissier',   ecran_cible: 'pos' },
+
+      // ── Restaurant ──────────────────────────────────────────────
+      { boutique_type: 'restaurant', profil_code: 'admin',     ecran_cible: 'restaurant-admin' },
+      { boutique_type: 'restaurant', profil_code: 'gerant',    ecran_cible: 'restaurant-admin' },
+      { boutique_type: 'restaurant', profil_code: 'serveur',   ecran_cible: 'restaurant-serveur' },
+      { boutique_type: 'restaurant', profil_code: 'cuisiner',  ecran_cible: 'restaurant-cuisine' },
+      { boutique_type: 'restaurant', profil_code: 'caissier',  ecran_cible: 'restaurant-caissier' },
+      { boutique_type: 'restaurant', profil_code: 'vendeur',   ecran_cible: 'restaurant-caissier' },
+
+      // ── Wildcard (fallback toutes boutiques) ────────────────────
+      { boutique_type: null, profil_code: 'admin',      ecran_cible: 'dashboard' },
+      { boutique_type: null, profil_code: 'gerant',     ecran_cible: 'dashboard' },
+      { boutique_type: null, profil_code: 'magasinier', ecran_cible: 'dashboard' },
+      { boutique_type: null, profil_code: 'user',       ecran_cible: 'dashboard' },
+      { boutique_type: null, profil_code: 'vendeur',    ecran_cible: 'pos' },
+      { boutique_type: null, profil_code: 'caissier',   ecran_cible: 'pos' },
+      { boutique_type: null, profil_code: 'serveur',    ecran_cible: 'restaurant-serveur' },
+      { boutique_type: null, profil_code: 'cuisiner',   ecran_cible: 'restaurant-cuisine' },
+    ];
+
+    for (const cfg of defaults) {
+      const where: any = { profil_code: cfg.profil_code, boutique_type: cfg.boutique_type === null ? IsNull() : cfg.boutique_type };
+      const existing = await repo.findOne({ where });
+      if (!existing) {
+        await repo.save(repo.create(cfg));
+      }
+    }
+
+    this.logger.log(`Seed configurations_ecran — ${defaults.length} entrées vérifiées.`);
   }
 
   getHello(): string {

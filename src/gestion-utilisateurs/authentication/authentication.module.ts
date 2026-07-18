@@ -10,12 +10,14 @@ import { ProfilsService } from '../profils/profils.service';
 import { Profil } from '../profils/entities/profil.entity';
 import { TenantModule } from 'src/tenant/tenant.module';
 import { ModuleStructureModule } from 'src/modules/module-structure.module';
+import { ConfigurationEcranModule } from 'src/configuration-ecran/configuration-ecran.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Utilisateur, Profil]),
     TenantModule,
     ModuleStructureModule,
+    ConfigurationEcranModule,
   ],
   controllers: [AuthenticationController],
   providers: [AuthenticationService, JwtService, UtilisateursService, JwtStrategy, ProfilsService]

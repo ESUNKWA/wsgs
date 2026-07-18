@@ -8,6 +8,7 @@ import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entit
 import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
 import { AbonnementService } from 'src/abonnement/abonnement.service';
 import { ModuleStructureService } from 'src/modules/module-structure.service';
+import { ConfigurationEcranService } from 'src/configuration-ecran/configuration-ecran.service';
 
 @Injectable()
 export class AuthenticationService {
@@ -18,6 +19,7 @@ export class AuthenticationService {
     private readonly tenantService: TenantService,
     private readonly abonnementService: AbonnementService,
     private readonly moduleService: ModuleStructureService,
+    private readonly configEcranService: ConfigurationEcranService,
   ) {}
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
@@ -57,7 +59,8 @@ export class AuthenticationService {
         expiresIn: process.env.JWT_TOKEN_EXPIRE || '1h',
       } as JwtSignOptions);
 
-      return { utilisateur, access_token };
+      const ecran_cible = await this.configEcranService.resolve('super_admin', null);
+      return { utilisateur, access_token, ecran_cible };
     }
 
     // 3. Récupérer boutique_id, boutiques et l'id tenant de l'utilisateur
@@ -124,6 +127,13 @@ export class AuthenticationService {
       ? await this.moduleService.getActiveModules(structureId).catch(() => [])
       : [];
 
+    // Résolution de l'écran cible selon profil + type de boutique
+    const boutiqueType: string | null =
+      (boutique as any)?.type ??
+      (boutiques?.[0] as any)?.type ??
+      null;
+    const ecran_cible = await this.configEcranService.resolve(profilCode, boutiqueType);
+
     return {
       utilisateur: isManager
         ? { ...utilisateur, boutiques }
@@ -131,6 +141,7 @@ export class AuthenticationService {
       access_token,
       abonnement,
       modules,
+      ecran_cible,
     };
   }
 
