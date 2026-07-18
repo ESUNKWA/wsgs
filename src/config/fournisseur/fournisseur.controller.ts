@@ -34,6 +34,16 @@ export class FournisseurController {
     return this.responseService.successPaginated('Liste des fournisseurs', result);
   }
 
+  @Get('structure/:id')
+  async findByStructure(
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: 400 })) structureId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<any> {
+    const result = await this.fournisseurService.findByStructure(structureId, Number(page) || 1, Number(limit) || 50);
+    return this.responseService.successPaginated('Liste des fournisseurs', result);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<DataRequest> {
     const data = await this.fournisseurService.findOne(+id);

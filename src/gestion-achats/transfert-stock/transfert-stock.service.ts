@@ -154,10 +154,15 @@ export class TransfertStockService {
             description: ligne.produit.description ?? null,
             categorie: ligne.produit.categorie ?? null,
             boutique: { id: destId } as any,
-            image: null,
+            image: ligne.produit.image ?? null,
             code_barre: ligne.produit.code_barre ?? null,
           });
           produitDest = await manager.save(produitDest);
+        }
+
+        // Synchroniser l'image si elle manque sur le produit destination
+        if (!produitDest.image && ligne.produit.image) {
+          produitDest.image = ligne.produit.image;
         }
 
         historiques.push({

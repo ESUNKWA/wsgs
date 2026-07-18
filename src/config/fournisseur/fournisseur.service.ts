@@ -42,6 +42,17 @@ export class FournisseurService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  async findByStructure(structureId: number, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await this.fournisseurRepository.findAndCount({
+      where: { boutique: { structure_id: structureId } },
+      order: { nom: 'ASC' },
+      skip,
+      take: limit,
+    });
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findOne(id: number): Promise<Fournisseur> {
     const fournisseur = await this.fournisseurRepository.findOne({ where: { id } });
     if (!fournisseur) throw new NotFoundException('Fournisseur inexistant');

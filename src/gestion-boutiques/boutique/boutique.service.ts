@@ -33,13 +33,22 @@ export class BoutiqueService {
       const ds = await this.resolveDs(structureId);
       const repo = ds.getRepository(Boutique);
 
-      // Compter les boutiques existantes pour savoir si c'est une boutique supplémentaire
-      const nbExistantes = structureId
-        ? await repo.count({ where: { structure_id: structureId, is_active: true } })
+      // Les départements et entrepôts ne sont pas des boutiques commerciales → pas de restriction
+      const typeNouvelle = (rest.type as string) ?? 'boutique';
+      const isUnitéCommerciale = !['departement', 'entrepot'].includes(typeNouvelle);
+
+      // Compter uniquement les boutiques/restaurants (pas les dépôts/départements)
+      const nbExistantes = (structureId && isUnitéCommerciale)
+        ? await repo.count({
+            where: [
+              { structure_id: structureId, is_active: true, type: 'boutique' as any },
+              { structure_id: structureId, is_active: true, type: 'restaurant' as any },
+            ],
+          })
         : 0;
 
-      // Bloquer l'ajout d'une 2ème boutique si la structure est en période d'essai
-      if (structureId && nbExistantes >= 1) {
+      // Bloquer l'ajout d'une 2ème boutique commerciale si la structure est en période d'essai
+      if (structureId && isUnitéCommerciale && nbExistantes >= 1) {
         const enEssai = await this.abonnementService.isEnEssai(structureId);
         if (enEssai) {
           throw new ForbiddenException(
@@ -56,8 +65,8 @@ export class BoutiqueService {
       });
       const saved = await repo.save(data) as any;
 
-      // Notifier l'abonnement si c'est une boutique supplémentaire (plan payant garanti ici)
-      if (structureId && nbExistantes >= 1) {
+      // Notifier l'abonnement si c'est une boutique commerciale supplémentaire (plan payant garanti ici)
+      if (structureId && isUnitéCommerciale && nbExistantes >= 1) {
         await this.abonnementService.notifierAjoutBoutique(structureId, saved.id, saved.nom).catch(() => null);
       }
 

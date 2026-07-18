@@ -39,6 +39,10 @@ export class Utilisateur extends defaultDateGeneratorHelper {
     @Column({ name: 'r_structure_id', nullable: true, type: 'integer' })
     structure_id!: number | null;
 
-    @Column({ name: 'r_telephone', length: 10, type: 'character varying', nullable: false, unique: false })
+    @Index({ unique: true })
+    @Column({ name: 'r_telephone', length: 20, type: 'character varying', nullable: false, unique: true })
     telephone!: string;
+
+    @Column({ name: 'r_must_change_password', type: 'boolean', default: true })
+    must_change_password!: boolean;
 }

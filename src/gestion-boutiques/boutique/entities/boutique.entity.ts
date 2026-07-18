@@ -13,8 +13,8 @@ export class Boutique {
     @Column({ name: 'r_nom', nullable: false, unique: true, type: 'character varying', length: 35 })
     nom!: string;
 
-    @Column({ name: 'r_telephone', nullable: false, unique: false, type: 'character varying', length: 15 })
-    telephone!: string;
+    @Column({ name: 'r_telephone', nullable: true, unique: false, type: 'character varying', length: 15 })
+    telephone!: string | null;
 
     @Column({ name: 'r_email', nullable: true, unique: false, type: 'character varying', length: 35 })
     email!: string;

@@ -34,6 +34,13 @@ export class CategorieController {
     return this.responseService.success('Liste des catégories', data);
   }
 
+  @Get('structure/:id')
+  @HttpCode(200)
+  async findByStructure(@Param('id') id: number): Promise<DataRequest> {
+    const data = await this.categorieService.findByStructure(id);
+    return this.responseService.success('Liste des catégories', data);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<DataRequest> {
     const data = await this.categorieService.findOne(+id);

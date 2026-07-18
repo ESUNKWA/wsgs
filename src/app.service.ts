@@ -31,6 +31,18 @@ export class AppService implements OnApplicationBootstrap {
       );
     }
     this.logger.log(`Seed profils — ${PROFILS_SEED.length} profils vérifiés.`);
+
+    // Migration master DB : tous les utilisateurs existants doivent changer leur mot de passe
+    // sauf le super_admin (is_admin = true)
+    const run = (sql: string) => this.dataSource.query(sql).catch(() => {});
+    await run(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS r_must_change_password BOOLEAN DEFAULT TRUE`);
+    await run(`
+      UPDATE utilisateurs
+      SET r_must_change_password = CASE WHEN r_is_admin = TRUE THEN FALSE ELSE TRUE END
+      WHERE r_must_change_password IS NULL
+    `);
+    // Garantir que le super_admin reste toujours à false
+    await run(`UPDATE utilisateurs SET r_must_change_password = FALSE WHERE r_is_admin = TRUE`);
   }
 
   getHello(): string {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthenticationDto } from './dto/create-authentication.dto';
 import { UtilisateursService } from '../utilisateurs/utilisateurs.service';
 import * as bcrypt from 'bcrypt';
@@ -132,6 +132,24 @@ export class AuthenticationService {
       abonnement,
       modules,
     };
+  }
+
+  async changePassword(
+    userId: number,
+    body: { ancien_mot_de_passe: string; nouveau_mot_de_passe: string },
+  ): Promise<{ message: string }> {
+    const user = await this.utulisateurService.findMasterById(userId);
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+    const valid = await bcrypt.compare(body.ancien_mot_de_passe, user.mot_de_passe);
+    if (!valid) throw new BadRequestException('Ancien mot de passe incorrect');
+
+    if (body.nouveau_mot_de_passe.length < 6)
+      throw new BadRequestException('Le nouveau mot de passe doit contenir au moins 6 caractères');
+
+    const hash = await bcrypt.hash(body.nouveau_mot_de_passe, 10);
+    await this.utulisateurService.updatePassword(userId, hash);
+    return { message: 'Mot de passe modifié avec succès' };
   }
 
   validateToken(token: string) {

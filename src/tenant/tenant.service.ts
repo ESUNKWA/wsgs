@@ -39,6 +39,8 @@ import { LigneCommandeTable } from 'src/gestion-restaurant/commande-table/entiti
 import { MenuJour } from 'src/gestion-restaurant/menu-jour/entities/menu-jour.entity';
 import { TransfertStock } from 'src/gestion-achats/transfert-stock/entities/transfert-stock.entity';
 import { LigneTransfertStock } from 'src/gestion-achats/transfert-stock/entities/ligne-transfert-stock.entity';
+import { BonSortie } from 'src/gestion-achats/bon-sortie/entities/bon-sortie.entity';
+import { LigneBonSortie } from 'src/gestion-achats/bon-sortie/entities/ligne-bon-sortie.entity';
 
 const PROFILS_SEED = [
   { code: 'admin',                 nom: 'administrateur',        description: 'administrateur' },
@@ -67,6 +69,7 @@ export const TENANT_ENTITIES = [
   TableRestaurant, Recette, CompositionRecette, CommandeTable, LigneCommandeTable,
   MenuJour,
   TransfertStock, LigneTransfertStock,
+  BonSortie, LigneBonSortie,
 ];
 
 @Injectable()
@@ -193,6 +196,7 @@ export class TenantService {
     await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_numero_ordre INTEGER`);
     await run(`ALTER TABLE t_tables_restaurant ADD COLUMN IF NOT EXISTS r_appel_serveur BOOLEAN DEFAULT FALSE`);
     await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`);
+    await run(`ALTER TABLE t_boutiques ALTER COLUMN r_telephone DROP NOT NULL`);
 
     // Sync profils — upsert all seed profils so existing tenants get new roles
     for (const p of PROFILS_SEED) {
@@ -246,6 +250,32 @@ export class TenantService {
 
     // Colonne r_transfert_id sur l'historique de stock (traçabilité transferts)
     await run(`ALTER TABLE t_historique_stock ADD COLUMN IF NOT EXISTS r_transfert_id INTEGER`);
+
+    // Changement de mot de passe obligatoire à la première connexion
+    await run(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS r_must_change_password BOOLEAN DEFAULT TRUE`);
+    // Tous les comptes existants avant la migration sont forcés au changement
+    await run(`UPDATE utilisateurs SET r_must_change_password = TRUE WHERE r_must_change_password IS NULL`);
+
+    // Module bons de sortie interne (fournitures → départements)
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_bons_sortie (
+        id SERIAL PRIMARY KEY,
+        r_reference VARCHAR(30) UNIQUE NOT NULL,
+        r_motif TEXT,
+        "boutiqueSourceId" INTEGER NOT NULL,
+        "departementId" INTEGER NOT NULL,
+        "utilisateurId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_lignes_bon_sortie (
+        id SERIAL PRIMARY KEY,
+        r_quantite REAL NOT NULL,
+        "bonSortieId" INTEGER REFERENCES t_bons_sortie(id) ON DELETE CASCADE,
+        "fournitureId" INTEGER
+      )`);
 
     // Convertir r_source de enum → varchar pour accepter la valeur 'transfert'
     await run(`ALTER TABLE t_historique_stock ALTER COLUMN r_source TYPE VARCHAR(20) USING r_source::text`);
@@ -366,7 +396,8 @@ export class TenantService {
               mot_de_passe: hash,
               profil: adminProfil,
               structure_id: dto.structureId,
-            });
+              must_change_password: true,
+            } as any);
             adminUser = (await masterTx.save(Utilisateur, newUser)) as Utilisateur;
 
             // 4c. Lier l'admin comme responsable de la structure

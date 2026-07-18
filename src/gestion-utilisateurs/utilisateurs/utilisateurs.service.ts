@@ -81,6 +81,15 @@ export class UtilisateursService {
 
   async create(createUtilisateurDto: CreateUtilisateurDto): Promise<any> {
     try {
+      const doublon = await this.utilisateurRepository.findOne({
+        where: { telephone: createUtilisateurDto.telephone },
+      });
+      if (doublon) {
+        throw new BadRequestException(
+          `Le numéro ${createUtilisateurDto.telephone} est déjà utilisé par un autre compte.`,
+        );
+      }
+
       const defaultPwd = process.env.ADMIN_PASSWORD || '12345';
       const rawPassword = createUtilisateurDto.mot_de_passe || defaultPwd;
       const hashPassword = await bcrypt.hash(rawPassword, 10);
@@ -138,8 +147,9 @@ export class UtilisateursService {
         mot_de_passe: hashPassword,
         profil,
         is_admin: true,
-        structure_id: null,   // le super_admin n'appartient à aucun tenant
+        structure_id: null,
         boutique_id: null,
+        must_change_password: false,
       });
 
       const saved = await this.utilisateurRepository.save(user);
@@ -238,6 +248,33 @@ export class UtilisateursService {
     const data = await repo.findOne({ where: { id } });
     if (!data) throw new NotFoundException('Utilisateur inexistant');
     return data;
+  }
+
+  async findMasterById(id: number): Promise<Utilisateur> {
+    const data = await this.utilisateurRepository.findOne({ where: { id } });
+    if (!data) throw new NotFoundException('Utilisateur introuvable');
+    return data;
+  }
+
+  async updatePassword(masterUserId: number, hashedPassword: string): Promise<void> {
+    await this.utilisateurRepository.update(masterUserId, {
+      mot_de_passe: hashedPassword,
+      must_change_password: false,
+    } as any);
+
+    // Sync to tenant DB so must_change_password stays false after next login
+    const masterUser = await this.utilisateurRepository.findOne({ where: { id: masterUserId } });
+    if (masterUser?.structure_id) {
+      const tenantDs = await this.tenantService.getDataSource(masterUser.structure_id);
+      const tenantRepo = tenantDs.getRepository(Utilisateur);
+      const tenantUser = await tenantRepo.findOne({ where: { telephone: masterUser.telephone } });
+      if (tenantUser) {
+        await tenantRepo.update(tenantUser.id, {
+          mot_de_passe: hashedPassword,
+          must_change_password: false,
+        } as any);
+      }
+    }
   }
 
   async update(id: number, updateUtilisateurDto: UpdateUtilisateurDto): Promise<any> {

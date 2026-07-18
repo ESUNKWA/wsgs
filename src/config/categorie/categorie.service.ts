@@ -36,6 +36,10 @@ export class CategorieService {
     return await this.categorieRepository.find({ where: { boutique: { id } }, order: { nom: 'ASC' } });
   }
 
+  async findByStructure(structureId: number): Promise<Categorie[]> {
+    return await this.categorieRepository.find({ where: { boutique: { structure_id: structureId } }, order: { nom: 'ASC' } });
+  }
+
   async findOne(id: number): Promise<Partial<Categorie>> {
     const categorie = await this.categorieRepository.findOne({ where: { id } });
     if (!categorie) throw new NotFoundException('Catégorie inexistante');

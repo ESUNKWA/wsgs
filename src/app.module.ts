@@ -58,6 +58,7 @@ import { MenuJourModule } from './gestion-restaurant/menu-jour/menu-jour.module'
 import { PublicMenuModule } from './gestion-restaurant/public-menu/public-menu.module';
 import { SmsLog } from './sms/entities/sms-log.entity';
 import { TransfertStockModule } from './gestion-achats/transfert-stock/transfert-stock.module';
+import { BonSortieModule } from './gestion-achats/bon-sortie/bon-sortie.module';
 import { ModuleStructure } from './modules/entities/module-structure.entity';
 import { ModuleStructureModule } from './modules/module-structure.module';
 
@@ -116,6 +117,7 @@ import { ModuleStructureModule } from './modules/module-structure.module';
     MenuJourModule,
     PublicMenuModule,
     TransfertStockModule,
+    BonSortieModule,
     ModuleStructureModule,
   ],
   controllers: [AppController],
