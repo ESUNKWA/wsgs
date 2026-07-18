@@ -350,15 +350,11 @@ export class UtilisateursService {
   }
 
   async signin(telephone: string): Promise<Utilisateur> {
-    try {
-      const data = await this.utilisateurRepository.findOne({
-        where: { telephone },
-        relations: ['structure'],
-      });
-      if (!data) throw new NotFoundException('Identifiant ou mot de passe incorrect');
-      return data;
-    } catch (error: any) {
-      throw new InternalServerErrorException(error.message);
-    }
+    const data = await this.utilisateurRepository.findOne({
+      where: { telephone },
+      relations: ['structure'],
+    });
+    if (!data) throw new NotFoundException('Identifiant ou mot de passe incorrect');
+    return data;
   }
 }
