@@ -29,6 +29,9 @@ export class Structure extends defaultDateGeneratorHelper {
     @Column({ name: 'r_couleur_primaire', nullable: true, type: 'character varying', length: 7 })
     couleur_primaire!: string | null;
 
+    @Column({ name: 'r_couleur_secondaire', nullable: true, type: 'character varying', length: 7 })
+    couleur_secondaire!: string | null;
+
     @ManyToOne(type => Utilisateur, (responsable) => responsable.structure,
         { nullable: true, onDelete: 'SET NULL' })
     responsable!: Utilisateur;

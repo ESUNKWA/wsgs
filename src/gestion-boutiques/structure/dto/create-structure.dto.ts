@@ -19,4 +19,7 @@ export class CreateStructureDto {
 
     @IsOptional()
     couleur_primaire?: string | null;
+
+    @IsOptional()
+    couleur_secondaire?: string | null;
 }

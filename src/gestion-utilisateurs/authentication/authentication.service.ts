@@ -139,7 +139,7 @@ export class AuthenticationService {
     const ecran_cible = await this.configEcranService.resolve(profilCode, boutiqueType);
 
     const structure = structureId
-      ? await this.structureRepo.findOne({ where: { id: structureId }, select: ['id', 'couleur_primaire'] })
+      ? await this.structureRepo.findOne({ where: { id: structureId }, select: ['id', 'couleur_primaire', 'couleur_secondaire'] })
       : null;
 
     return {
@@ -150,7 +150,10 @@ export class AuthenticationService {
       abonnement,
       modules,
       ecran_cible,
-      theme: { couleur_primaire: structure?.couleur_primaire ?? null },
+      theme: {
+        couleur_primaire:   structure?.couleur_primaire   ?? null,
+        couleur_secondaire: structure?.couleur_secondaire ?? null,
+      },
     };
   }
 
