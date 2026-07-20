@@ -755,7 +755,7 @@ export class AbonnementService implements OnApplicationBootstrap {
   }
 
   private getLogoHtml(height = 52): string {
-    const logoPath = path.join(process.cwd(), 'public', 'assets', 'ekwatech-logo.png');
+    const logoPath = path.join(process.cwd(), 'public', 'ekwatech', 'logo-transparent.png');
     if (fs.existsSync(logoPath)) {
       const b64 = fs.readFileSync(logoPath).toString('base64');
       return `<img src="data:image/png;base64,${b64}" style="height:${height}px;width:auto;object-fit:contain;" alt="Ekwatech">`;
