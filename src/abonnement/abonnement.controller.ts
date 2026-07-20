@@ -101,8 +101,10 @@ export class AbonnementController {
   async getDevisRenouvellement(
     @Param('structureId') structureId: string,
     @Param('plan') plan: string,
+    @Req() req: Request,
   ) {
-    const data = await this.abonnementService.calculerDevisRenouvellement(+structureId, plan as any);
+    const isSuperAdmin = (req as any).user?.is_super_admin === true;
+    const data = await this.abonnementService.calculerDevisRenouvellement(+structureId, plan as any, isSuperAdmin);
     return this.responseService.success('Devis de renouvellement', data);
   }
 

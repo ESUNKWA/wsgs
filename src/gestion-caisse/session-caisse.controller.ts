@@ -56,7 +56,7 @@ export class SessionCaisseController {
   }
 
   @Get()
-  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(@Query() query: { boutique: number; page?: number; limit?: number; caissier?: string }) {
     const result = await this.sessionCaisseService.findAll(query);
     return this.responseService.successPaginated('Sessions de caisse', result);
   }

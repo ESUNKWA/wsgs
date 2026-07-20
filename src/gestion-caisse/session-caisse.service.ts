@@ -381,13 +381,21 @@ export class SessionCaisseService {
     };
   }
 
-  async findAll(query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(query: { boutique: number; page?: number; limit?: number; caissier?: string }) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
+    let caissierWhere = {};
+    if (query.caissier) {
+      try {
+        const caissier = await this.resolveCaissier(query.caissier);
+        caissierWhere = { caissier: { id: caissier.id } };
+      } catch { /* pas de filtre si caissier introuvable */ }
+    }
+
     const [items, total] = await this.sessionRepo.findAndCount({
-      where: { boutique: { id: query.boutique } },
+      where: { boutique: { id: query.boutique }, ...caissierWhere },
       relations: ['caissier'],
       order: { created_at: 'DESC' },
       skip,

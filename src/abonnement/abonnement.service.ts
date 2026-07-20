@@ -35,6 +35,12 @@ const DUREE_PLAN: Record<PlanType, number> = {
   '1_an':   12,
 };
 
+const PLAN_ORDER: PlanType[] = ['1_mois', '3_mois', '6_mois', '1_an'];
+
+function sortByPlan<T extends { plan: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => PLAN_ORDER.indexOf(a.plan as PlanType) - PLAN_ORDER.indexOf(b.plan as PlanType));
+}
+
 /** Prix mensuel de référence par catégorie (XOF) — Côte d'Ivoire */
 const TARIF_MENSUEL_PAR_CATEGORIE: Record<string, number> = {
   'Épicerie / Boutique de quartier': 5000,
@@ -206,21 +212,25 @@ export class AbonnementService implements OnApplicationBootstrap {
   // ─── Souscription ─────────────────────────────────────────────────────────
 
   async souscrire(dto: SouscrireAbonnementDto, isSuperAdmin = false): Promise<Abonnement> {
-    const devis = await this.calculerDevisRenouvellement(dto.structureId, dto.plan);
-
     const maintenant = new Date();
     const statut: StatutAbonnement = isSuperAdmin ? 'actif' : 'en_attente';
 
+    // Déterminer si c'est une extension (abonnement actif existant) AVANT de calculer le devis
     let date_debut = maintenant;
+    let isExtension = false;
     if (isSuperAdmin) {
       const courant = await this.abonnementRepo.findOne({
         where: { structureId: dto.structureId },
         order: { date_fin: 'DESC' },
       });
-      if (courant?.statut === 'actif' && courant.date_fin > maintenant) {
-        date_debut = courant.date_fin;
+      isExtension = !!(courant?.statut === 'actif' && courant.date_fin > maintenant);
+      if (isExtension) {
+        date_debut = courant!.date_fin;
       }
     }
+
+    // Frais de mise en place : toujours inclus pour le super admin (nouvelle souscription ou renouvellement)
+    const devis = await this.calculerDevisRenouvellement(dto.structureId, dto.plan, isSuperAdmin);
 
     // Calcul de la remise
     let montantFinal = dto.montant ?? devis.total;
@@ -232,6 +242,10 @@ export class AbonnementService implements OnApplicationBootstrap {
         : dto.remise_valeur;
       montantFinal = Math.max(0, devis.total - montant_remise);
       remise_detail = { type: dto.remise_type, valeur: dto.remise_valeur, montant_remise };
+    } else if (dto.montant != null && dto.montant < devis.total) {
+      // Montant personnalisé sans remise explicite → on déduit la remise pour garder la cohérence de la facture
+      const montant_remise = devis.total - dto.montant;
+      remise_detail = { type: 'montant', valeur: montant_remise, montant_remise };
     }
 
     const abo = this.abonnementRepo.create({
@@ -313,7 +327,7 @@ export class AbonnementService implements OnApplicationBootstrap {
     const cats = await this.categorieRepo.find({ order: { ordre: 'ASC', label: 'ASC' } });
     return Promise.all(cats.map(async c => ({
       ...c,
-      tarifs: await this.planTarifCatRepo.find({ where: { categorieId: c.id }, order: { plan: 'ASC' } }),
+      tarifs: sortByPlan(await this.planTarifCatRepo.find({ where: { categorieId: c.id } })),
     })));
   }
 
@@ -336,7 +350,8 @@ export class AbonnementService implements OnApplicationBootstrap {
   }
 
   async getTarifsCategorie(categorieId: number): Promise<PlanTarifCategorie[]> {
-    return this.planTarifCatRepo.find({ where: { categorieId }, order: { plan: 'ASC' } });
+    const tarifs = await this.planTarifCatRepo.find({ where: { categorieId } });
+    return sortByPlan(tarifs);
   }
 
   async upsertTarifCategorie(
@@ -367,9 +382,18 @@ export class AbonnementService implements OnApplicationBootstrap {
     return count === 0;
   }
 
+  async hasAbonnementActif(structureId: number): Promise<boolean> {
+    const maintenant = new Date();
+    const courant = await this.abonnementRepo.findOne({
+      where: { structureId },
+      order: { date_fin: 'DESC' },
+    });
+    return !!(courant?.statut === 'actif' && courant.date_fin > maintenant);
+  }
+
   // ─── Devis de renouvellement ──────────────────────────────────────────────
 
-  async calculerDevisRenouvellement(structureId: number, plan: PlanType): Promise<{
+  async calculerDevisRenouvellement(structureId: number, plan: PlanType, forceFrais = false): Promise<{
     plan: PlanType;
     prix_base: number;
     boutiques_incluses: number;
@@ -418,9 +442,10 @@ export class AbonnementService implements OnApplicationBootstrap {
       : config.valeur;
     const montantExtra = nbExtra * prixExtra;
 
-    // Frais de mise en place uniquement au 1er abonnement payant
+    // Frais de mise en place : 1er abonnement payant, OU forcé par le super admin
     const estPremier = await this.estPremierAbonnement(structureId);
-    const fraisSetupItems = estPremier
+    const inclureFrais = estPremier || forceFrais;
+    const fraisSetupItems = inclureFrais
       ? (await this.fraisSetupRepo.find({ where: { est_actif: true }, order: { ordre: 'ASC', id: 'ASC' } }))
           .map(f => ({ label: f.label, montant: f.montant, devise: f.devise }))
       : [];
@@ -594,7 +619,20 @@ export class AbonnementService implements OnApplicationBootstrap {
     const cached = this.cache.get(structureId);
     if (cached && Date.now() - cached.cachedAt < this.CACHE_TTL) return cached.statut;
 
-    // Chercher d'abord un abonnement actif, sinon le plus récent
+    const maintenant = new Date();
+
+    // Priorité : un abonnement actif dont la date de fin n'est pas encore passée.
+    // Cela permet à un utilisateur qui a soumis un renouvellement (en_attente) de
+    // continuer à utiliser l'application tant que son abonnement courant est valide.
+    const aboActif = await this.abonnementRepo.findOne({
+      where: { structureId, statut: 'actif' as StatutAbonnement },
+      order: { date_fin: 'DESC' },
+    });
+    if (aboActif && aboActif.date_fin > maintenant) {
+      return this.setCache(structureId, 'actif');
+    }
+
+    // Aucun abonnement actif valide : prendre le plus récent pour déterminer le statut
     const abo = await this.abonnementRepo.findOne({
       where: { structureId },
       order: { date_fin: 'DESC' },
@@ -604,7 +642,7 @@ export class AbonnementService implements OnApplicationBootstrap {
     if (abo.statut === 'suspendu') return this.setCache(structureId, 'suspendu');
     if (abo.statut === 'en_attente') return this.setCache(structureId, 'en_attente');
 
-    if (abo.date_fin < new Date() && abo.statut === 'actif') {
+    if (abo.date_fin < maintenant && abo.statut === 'actif') {
       await this.abonnementRepo.update(abo.id, { statut: 'expire' });
       return this.setCache(structureId, 'expire');
     }
@@ -615,12 +653,33 @@ export class AbonnementService implements OnApplicationBootstrap {
   // ─── Lecture ──────────────────────────────────────────────────────────────
 
   async getAbonnement(structureId: number): Promise<any | null> {
+    const maintenant = new Date();
+
+    // Priorité : l'abonnement actif non expiré (même si un renouvellement en_attente existe)
+    const aboActif = await this.abonnementRepo.findOne({
+      where: { structureId, statut: 'actif' as StatutAbonnement },
+      order: { date_fin: 'DESC' },
+    });
+
+    // Si un abonnement actif existe et n'est pas encore expiré, on le retourne
+    // mais on indique s'il y a un renouvellement en attente
+    if (aboActif && aboActif.date_fin > maintenant) {
+      const enAttente = await this.abonnementRepo.findOne({
+        where: { structureId, statut: 'en_attente' as StatutAbonnement },
+        order: { created_at: 'DESC' },
+      });
+      const jours_restants = Math.max(0, Math.ceil((aboActif.date_fin.getTime() - maintenant.getTime()) / 86400000));
+      const boutiques_supplementaires = await this.boutiqueAboRepo.count({ where: { structureId, est_active: true } });
+      return { ...aboActif, jours_restants, boutiques_supplementaires, renouvellement_en_attente: !!enAttente };
+    }
+
+    // Pas d'abonnement actif valide : retourner le plus récent (en_attente, expire, etc.)
     const abo = await this.abonnementRepo.findOne({
       where: { structureId },
       order: { date_fin: 'DESC' },
     });
     if (!abo) return null;
-    const jours_restants = Math.max(0, Math.ceil((abo.date_fin.getTime() - Date.now()) / 86400000));
+    const jours_restants = Math.max(0, Math.ceil((abo.date_fin.getTime() - maintenant.getTime()) / 86400000));
     const boutiques_supplementaires = await this.boutiqueAboRepo.count({ where: { structureId, est_active: true } });
     return { ...abo, jours_restants, boutiques_supplementaires };
   }
@@ -1148,7 +1207,8 @@ export class AbonnementService implements OnApplicationBootstrap {
   // ─── Plans tarifaires ─────────────────────────────────────────────────────
 
   async getPlans(): Promise<PlanTarif[]> {
-    return this.planTarifRepo.find({ order: { id: 'ASC' } });
+    const plans = await this.planTarifRepo.find();
+    return sortByPlan(plans);
   }
 
   async upsertPlan(plan: PlanType, montant: number, devise = 'XOF'): Promise<PlanTarif> {

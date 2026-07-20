@@ -8,9 +8,10 @@ import { Reflector } from '@nestjs/core';
 import { AbonnementService } from '../abonnement.service';
 
 const MESSAGES: Record<string, string> = {
-  expire:  "Votre abonnement a expiré. Contactez votre administrateur pour renouveler.",
-  suspendu: "Votre accès a été suspendu. Contactez votre administrateur.",
-  aucun:   "Aucun abonnement actif pour cette structure. Contactez votre administrateur.",
+  expire:     "Votre abonnement a expiré. Contactez votre administrateur pour renouveler.",
+  suspendu:   "Votre accès a été suspendu. Contactez votre administrateur.",
+  aucun:      "Aucun abonnement actif pour cette structure. Contactez votre administrateur.",
+  en_attente: "Votre demande de souscription est en attente de validation par l'administrateur.",
 };
 
 @Injectable()
