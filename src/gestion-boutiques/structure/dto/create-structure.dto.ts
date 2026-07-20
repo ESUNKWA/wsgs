@@ -16,4 +16,7 @@ export class CreateStructureDto {
     @IsNumber()
     @Transform(({ value }) => (value != null && value !== '' ? parseInt(value, 10) : null))
     categorieId?: number | null;
+
+    @IsOptional()
+    couleur_primaire?: string | null;
 }

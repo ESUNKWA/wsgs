@@ -11,10 +11,11 @@ import { Profil } from '../profils/entities/profil.entity';
 import { TenantModule } from 'src/tenant/tenant.module';
 import { ModuleStructureModule } from 'src/modules/module-structure.module';
 import { ConfigurationEcranModule } from 'src/configuration-ecran/configuration-ecran.module';
+import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Utilisateur, Profil]),
+    TypeOrmModule.forFeature([Utilisateur, Profil, Structure]),
     TenantModule,
     ModuleStructureModule,
     ConfigurationEcranModule,

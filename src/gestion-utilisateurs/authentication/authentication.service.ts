@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateAuthenticationDto } from './dto/create-authentication.dto';
 import { UtilisateursService } from '../utilisateurs/utilisateurs.service';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +8,7 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { TenantService } from 'src/tenant/tenant.service';
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Utilisateur } from '../utilisateurs/entities/utilisateur.entity';
+import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 import { AbonnementService } from 'src/abonnement/abonnement.service';
 import { ModuleStructureService } from 'src/modules/module-structure.service';
 import { ConfigurationEcranService } from 'src/configuration-ecran/configuration-ecran.service';
@@ -20,6 +23,7 @@ export class AuthenticationService {
     private readonly abonnementService: AbonnementService,
     private readonly moduleService: ModuleStructureService,
     private readonly configEcranService: ConfigurationEcranService,
+    @InjectRepository(Structure) private readonly structureRepo: Repository<Structure>,
   ) {}
 
   async login(createAuthenticationDto: CreateAuthenticationDto): Promise<any> {
@@ -134,6 +138,10 @@ export class AuthenticationService {
       null;
     const ecran_cible = await this.configEcranService.resolve(profilCode, boutiqueType);
 
+    const structure = structureId
+      ? await this.structureRepo.findOne({ where: { id: structureId }, select: ['id', 'couleur_primaire'] })
+      : null;
+
     return {
       utilisateur: isManager
         ? { ...utilisateur, boutiques }
@@ -142,6 +150,7 @@ export class AuthenticationService {
       abonnement,
       modules,
       ecran_cible,
+      theme: { couleur_primaire: structure?.couleur_primaire ?? null },
     };
   }
 
