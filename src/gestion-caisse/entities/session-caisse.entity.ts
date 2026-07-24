@@ -3,6 +3,7 @@ import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entit
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { Column, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { MouvementCaisse } from './mouvement-caisse.entity';
+import { Caisse } from './caisse.entity';
 
 export type StatutSession = 'ouverte' | 'fermee';
 
@@ -49,6 +50,9 @@ export class SessionCaisse extends defaultDateGeneratorHelper {
 
   @ManyToOne(() => Utilisateur, { eager: true, nullable: false })
   caissier!: Utilisateur;
+
+  @ManyToOne(() => Caisse, { nullable: true, eager: false })
+  caisse!: Caisse | null;
 
   @OneToMany(() => MouvementCaisse, (m) => m.session)
   mouvements!: MouvementCaisse[];

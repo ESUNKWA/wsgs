@@ -75,10 +75,12 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
     .net-row td { font-weight: bold; font-size: 15px; border-top: 1px solid #000; padding-top: 1mm; }
     .footer { text-align: center; margin-top: 3mm; font-size: 12px; }
     .merci { font-size: 14px; font-weight: bold; margin-top: 2mm; }
+    .boutique-logo { display: block; margin: 0 auto 2mm; max-width: 22mm; max-height: 22mm; object-fit: contain; }
   </style>
 </head>
 <body>
 
+  ${data?.logo_boutique ? `<img class="boutique-logo" src="${data.logo_boutique}" alt="Logo">` : ''}
   <div class="center bold large">${data?.nom_boutique || ''}</div>
   ${data?.adresse_boutique ? `<div class="center small">${data.adresse_boutique}</div>` : ''}
   ${data?.phone_boutique ? `<div class="center small">Tél: ${data.phone_boutique}</div>` : ''}

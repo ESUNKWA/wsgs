@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { SessionCaisse, FondParMode } from './entities/session-caisse.entity';
 import { MouvementCaisse } from './entities/mouvement-caisse.entity';
+import { Caisse } from './entities/caisse.entity';
 import { OuvrirCaisseDto } from './dto/ouvrir-caisse.dto';
 import { FermerCaisseDto } from './dto/fermer-caisse.dto';
 import { MouvementCaisseDto } from './dto/mouvement-caisse.dto';
@@ -87,27 +88,44 @@ export class SessionCaisseService {
 
     const caissier = await this.resolveCaissier(dto.caissier);
 
-    // Mode caisse par caissier : chaque utilisateur a sa propre session
-    const existante = await this.sessionRepo.findOne({
-      where: {
-        boutique: { id: dto.boutique },
-        caissier: { id: caissier.id },
-        statut: 'ouverte',
-      },
-    });
-    if (existante) {
-      throw new BadRequestException(
-        `Vous avez déjà une session de caisse ouverte (réf: ${existante.reference}). Fermez-la avant d'en ouvrir une nouvelle.`,
-      );
+    // Validation caisse physique
+    let caisseEntity: Caisse | null = null;
+    if (dto.caisse_id) {
+      caisseEntity = await this.dataSource.getRepository(Caisse).findOne({
+        where: { id: dto.caisse_id, boutique: { id: dto.boutique } },
+      });
+      if (!caisseEntity) throw new BadRequestException('Caisse introuvable');
+      if (caisseEntity.statut !== 'ACTIVE') {
+        throw new BadRequestException("Cette caisse est inactive. Activez-la avant d'ouvrir une session.");
+      }
+      const sessionSurCaisse = await this.sessionRepo.findOne({
+        where: { caisse: { id: dto.caisse_id }, statut: 'ouverte' },
+      });
+      if (sessionSurCaisse) {
+        throw new BadRequestException(
+          `Cette caisse a déjà une session ouverte (réf: ${sessionSurCaisse.reference}).`,
+        );
+      }
+    } else {
+      // Ancien comportement : une session par caissier
+      const existante = await this.sessionRepo.findOne({
+        where: { boutique: { id: dto.boutique }, caissier: { id: caissier.id }, statut: 'ouverte' },
+      });
+      if (existante) {
+        throw new BadRequestException(
+          `Vous avez déjà une session de caisse ouverte (réf: ${existante.reference}). Fermez-la avant d'en ouvrir une nouvelle.`,
+        );
+      }
     }
 
     const session = this.sessionRepo.create({
-      reference: ReferenceGeneratorHelper.generate('CSE'),
+      reference:      ReferenceGeneratorHelper.generate('CSE'),
       fond_ouverture: dto.fond_ouverture,
-      statut: 'ouverte',
+      statut:         'ouverte',
       date_ouverture: new Date(),
-      boutique: { id: dto.boutique } as any,
-      caissier: { id: caissier.id } as any,
+      boutique:       { id: dto.boutique } as any,
+      caissier:       { id: caissier.id }  as any,
+      caisse:         caisseEntity ? ({ id: caisseEntity.id } as any) : null,
     });
     return this.sessionRepo.save(session);
   }
@@ -396,7 +414,7 @@ export class SessionCaisseService {
 
     const [items, total] = await this.sessionRepo.findAndCount({
       where: { boutique: { id: query.boutique }, ...caissierWhere },
-      relations: ['caissier'],
+      relations: ['caissier', 'caisse'],
       order: { created_at: 'DESC' },
       skip,
       take: limit,

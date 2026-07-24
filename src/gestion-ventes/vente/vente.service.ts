@@ -152,6 +152,7 @@ export class VenteService {
     montant?: number;
     date_debut?: string;
     date_fin?: string;
+    utilisateur?: number;
     page?: number;
     limit?: number;
   }) {
@@ -183,6 +184,9 @@ export class VenteService {
       const fin = new Date(query.date_fin);
       fin.setHours(23, 59, 59, 999);
       qb.andWhere('v.created_at <= :date_fin', { date_fin: fin });
+    }
+    if (query.utilisateur !== undefined) {
+      qb.andWhere('v.userId = :utilisateur', { utilisateur: query.utilisateur });
     }
 
     const [items, total] = await qb

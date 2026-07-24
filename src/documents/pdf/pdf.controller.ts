@@ -1,5 +1,7 @@
 import { Controller, Logger, Post, Body, Param, Get, Res } from '@nestjs/common';
 import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PdfService } from './pdf.service';
 import { generateHtml } from 'src/common/shared/generateHtml';
 import { generateHtmlThermique } from 'src/common/shared/generateHtmlThermique';
@@ -79,12 +81,28 @@ export class PdfController {
   /** Fallback: si recu_data stocké à la création ne contient pas le nom boutique, on le reconstruit depuis les relations chargées. */
   private resolveRecuData(vente: any): any {
     const recu = vente.recu_data ?? {};
-    if (recu.nom_boutique) {
-      this.logger.log(`[PRINT] source=recu_data_stored`);
-      return recu;
+    const base = recu.nom_boutique
+      ? (this.logger.log(`[PRINT] source=recu_data_stored`), recu)
+      : (this.logger.log(`[PRINT] source=fallback_formatVente (recu_data.nom_boutique manquant)`), formatVente(vente));
+
+    // Convert the stored relative logo path (api/tenants/x/logos/file.png)
+    // to a base64 data URL so Puppeteer can embed it without a network request.
+    if (base.logo_boutique) {
+      base.logo_boutique = this.logoToDataUrl(base.logo_boutique);
     }
-    this.logger.log(`[PRINT] source=fallback_formatVente (recu_data.nom_boutique manquant)`);
-    return formatVente(vente);
+    return base;
+  }
+
+  private logoToDataUrl(logoPath: string): string {
+    try {
+      const diskPath = path.join(process.cwd(), 'public', logoPath.replace(/^api\//, ''));
+      const data = fs.readFileSync(diskPath);
+      const ext = path.extname(diskPath).toLowerCase();
+      const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+      return `data:${mime};base64,${data.toString('base64')}`;
+    } catch {
+      return '';
+    }
   }
 
   @Public()
@@ -97,7 +115,7 @@ export class PdfController {
       nom_client: devis.client?.nom || '-',
       telephone_client: devis.client?.telephone || '-',
       nom_boutique: (devis.boutique as any)?.nom || '',
-      logo_boutique: (devis.boutique as any)?.logo || '',
+      logo_boutique: this.logoToDataUrl((devis.boutique as any)?.logo || ''),
       adresse_boutique: (devis.boutique as any)?.situation_geo || '',
       phone_boutique: (devis.boutique as any)?.telephone || '',
       email_boutique: (devis.boutique as any)?.email || '',

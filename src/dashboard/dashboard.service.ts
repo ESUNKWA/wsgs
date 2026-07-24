@@ -3,6 +3,7 @@ import { CreateDashboardDto } from './dto/create-dashboard.dto';
 import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
+import { SessionCaisse } from 'src/gestion-caisse/entities/session-caisse.entity';
 
 @Injectable()
 export class DashboardService {
@@ -366,16 +367,43 @@ export class DashboardService {
 
     const params = [boutiqueId, caissier.id];
 
+    // ── Session active ─────────────────────────────────────────────────────────
+    const sessionActive = await ds.getRepository(SessionCaisse).findOne({
+      where: {
+        boutique:  { id: boutiqueId },
+        caissier:  { id: caissier.id },
+        statut:    'ouverte',
+      },
+    });
+
+    const montantOuverture = sessionActive?.fond_ouverture
+      ? Object.values(sessionActive.fond_ouverture).reduce((acc, v) => acc + (v ?? 0), 0)
+      : 0;
+
+    // Ventes scoped à la session active (sinon à aujourd'hui)
+    const venteFilter = sessionActive
+      ? `"sessionCaisseId" = ${sessionActive.id} AND deleted_at IS NULL`
+      : `"boutiqueId" = $1 AND "userId" = $2 AND DATE(created_at) = CURRENT_DATE AND deleted_at IS NULL`;
+    const venteParams = sessionActive ? [] : params;
+
     const [summary] = await ds.query(
       `SELECT
          COUNT(*)::int                                                                          AS nb_ventes,
          COALESCE(SUM(COALESCE(NULLIF(r_montant_total_apres_remise, 0), r_montant_total)), 0)::float AS chiffre_affaires
        FROM t_ventes
-       WHERE "boutiqueId" = $1
-         AND "userId"     = $2
-         AND DATE(created_at) = CURRENT_DATE
-         AND deleted_at IS NULL`,
-      params,
+       WHERE ${venteFilter}`,
+      venteParams,
+    );
+
+    // ── Ventes à crédit ────────────────────────────────────────────────────────
+    const [credit] = await ds.query(
+      `SELECT
+         COUNT(*)::int                                                                          AS nb_credit,
+         COALESCE(SUM(COALESCE(NULLIF(r_montant_total_apres_remise, 0), r_montant_total)), 0)::float AS montant_credit
+       FROM t_ventes
+       WHERE ${venteFilter}
+         AND (r_mode_paiement = 'credit' OR r_statut = 'non_payer')`,
+      venteParams,
     );
 
     const modesRows: { mode: string; total: number }[] = await ds.query(
@@ -383,12 +411,9 @@ export class DashboardService {
          r_mode_paiement                                                                              AS mode,
          COALESCE(SUM(COALESCE(NULLIF(r_montant_total_apres_remise, 0), r_montant_total)), 0)::float AS total
        FROM t_ventes
-       WHERE "boutiqueId" = $1
-         AND "userId"     = $2
-         AND DATE(created_at) = CURRENT_DATE
-         AND deleted_at IS NULL
+       WHERE ${venteFilter}
        GROUP BY r_mode_paiement`,
-      params,
+      venteParams,
     );
     const par_mode_paiement = Object.fromEntries(modesRows.map(r => [r.mode, r.total]));
 
@@ -399,22 +424,36 @@ export class DashboardService {
       quantite_vendue: number;
       montant_total: number;
     }[] = await ds.query(
-      `SELECT
-         p.id                                                   AS produit_id,
-         p.r_nom                                               AS nom,
-         p.r_prix_vente::float                                 AS prix_unitaire,
-         SUM(dv.r_quantite)::int                               AS quantite_vendue,
-         SUM(dv.r_quantite * dv.r_prix_unitaire_vente)::float  AS montant_total
-       FROM t_detail_ventes dv
-       JOIN t_produits p ON p.id  = dv."produitId"
-       JOIN t_ventes   v ON v.id  = dv."venteId"
-       WHERE v."boutiqueId" = $1
-         AND v."userId"     = $2
-         AND DATE(v.created_at) = CURRENT_DATE
-         AND v.deleted_at IS NULL
-       GROUP BY p.id, p.r_nom, p.r_prix_vente
-       ORDER BY quantite_vendue DESC`,
-      params,
+      sessionActive
+        ? `SELECT
+             p.id                                                   AS produit_id,
+             p.r_nom                                               AS nom,
+             p.r_prix_vente::float                                 AS prix_unitaire,
+             SUM(dv.r_quantite)::int                               AS quantite_vendue,
+             SUM(dv.r_quantite * dv.r_prix_unitaire_vente)::float  AS montant_total
+           FROM t_detail_ventes dv
+           JOIN t_produits p ON p.id  = dv."produitId"
+           JOIN t_ventes   v ON v.id  = dv."venteId"
+           WHERE v."sessionCaisseId" = ${sessionActive.id}
+             AND v.deleted_at IS NULL
+           GROUP BY p.id, p.r_nom, p.r_prix_vente
+           ORDER BY quantite_vendue DESC`
+        : `SELECT
+             p.id                                                   AS produit_id,
+             p.r_nom                                               AS nom,
+             p.r_prix_vente::float                                 AS prix_unitaire,
+             SUM(dv.r_quantite)::int                               AS quantite_vendue,
+             SUM(dv.r_quantite * dv.r_prix_unitaire_vente)::float  AS montant_total
+           FROM t_detail_ventes dv
+           JOIN t_produits p ON p.id  = dv."produitId"
+           JOIN t_ventes   v ON v.id  = dv."venteId"
+           WHERE v."boutiqueId" = $1
+             AND v."userId"     = $2
+             AND DATE(v.created_at) = CURRENT_DATE
+             AND v.deleted_at IS NULL
+           GROUP BY p.id, p.r_nom, p.r_prix_vente
+           ORDER BY quantite_vendue DESC`,
+      sessionActive ? [] : params,
     );
 
     return {
@@ -425,8 +464,22 @@ export class DashboardService {
         prenoms: caissier.prenoms,
         telephone: caissier.telephone,
       },
-      nb_ventes: summary.nb_ventes,
+      session_caisse: sessionActive
+        ? {
+            id:               sessionActive.id,
+            reference:        sessionActive.reference,
+            statut:           sessionActive.statut,
+            date_ouverture:   sessionActive.date_ouverture,
+            fond_ouverture:   sessionActive.fond_ouverture,
+            montant_ouverture: montantOuverture,
+          }
+        : null,
+      nb_ventes:        summary.nb_ventes,
       chiffre_affaires: summary.chiffre_affaires,
+      ventes_credit: {
+        nb:      credit.nb_credit,
+        montant: credit.montant_credit,
+      },
       par_mode_paiement,
       produits,
     };

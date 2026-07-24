@@ -50,6 +50,13 @@ export class Boutique {
     @Column({ name: 'r_gestion_caisse_activee', type: 'boolean', default: false })
     gestion_caisse_activee!: boolean;
 
+    @Column({
+        name: 'r_modes_paiement',
+        type: 'jsonb',
+        nullable: true,
+        default: () => `'["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]'`,
+    })
+    modes_paiement!: string[] | null;
 
     @Column({ name: 'r_is_active', type: 'boolean', default: true })
     is_active!: boolean;

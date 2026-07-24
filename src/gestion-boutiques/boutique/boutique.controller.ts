@@ -58,6 +58,16 @@ export class BoutiqueController {
     return this.responseService.success('Modification effectuée avec succès', data);
   }
 
+  @Patch(':id/modes-paiement')
+  async updateModesPaiement(
+    @Param('id') id: string,
+    @Body('modes_paiement') modes: string[],
+    @Query('structure') structure?: string,
+  ): Promise<DataRequest> {
+    const data = await this.boutiqueService.updateModesPaiement(+id, modes, structure ? +structure : undefined);
+    return this.responseService.success('Modes de paiement mis à jour', data);
+  }
+
   @Patch(':id/desactiver')
   async desactiver(
     @Param('id') id: string,

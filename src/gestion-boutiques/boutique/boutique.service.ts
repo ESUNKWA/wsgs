@@ -147,6 +147,15 @@ export class BoutiqueService {
     }
   }
 
+  async updateModesPaiement(id: number, modes: string[], structureId?: number): Promise<Boutique> {
+    const ds = await this.resolveDs(structureId);
+    const repo = ds.getRepository(Boutique);
+    const boutique = await repo.findOne({ where: { id } });
+    if (!boutique) throw new NotFoundException('Boutique inexistante');
+    await repo.update(id, { modes_paiement: modes } as any);
+    return { ...boutique, modes_paiement: modes };
+  }
+
   remove(id: number) {
     return `This action removes a #${id} boutique`;
   }

@@ -26,6 +26,7 @@ import { CommandeClient } from 'src/gestion-ventes/commande-client/entities/comm
 import { DetailCommandeClient } from 'src/gestion-ventes/commande-client/entities/detail-commande-client.entity';
 import { SessionCaisse } from 'src/gestion-caisse/entities/session-caisse.entity';
 import { MouvementCaisse } from 'src/gestion-caisse/entities/mouvement-caisse.entity';
+import { Caisse } from 'src/gestion-caisse/entities/caisse.entity';
 import { Structure } from 'src/gestion-boutiques/structure/entities/structure.entity';
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { Profil } from 'src/gestion-utilisateurs/profils/entities/profil.entity';
@@ -63,7 +64,7 @@ export const TENANT_ENTITIES = [
   Devis, DetailDevis,
   CommandeFournisseur, DetailCommandeFournisseur,
   CommandeClient, DetailCommandeClient,
-  SessionCaisse, MouvementCaisse,
+  SessionCaisse, MouvementCaisse, Caisse,
   Structure, Utilisateur, Profil,
   RetourVente, DetailRetourVente,
   TableRestaurant, Recette, CompositionRecette, CommandeTable, LigneCommandeTable,
@@ -197,6 +198,7 @@ export class TenantService {
     await run(`ALTER TABLE t_tables_restaurant ADD COLUMN IF NOT EXISTS r_appel_serveur BOOLEAN DEFAULT FALSE`);
     await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`);
     await run(`ALTER TABLE t_boutiques ALTER COLUMN r_telephone DROP NOT NULL`);
+    await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_modes_paiement JSONB DEFAULT '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]'`);
 
     // Sync profils — upsert all seed profils so existing tenants get new roles
     for (const p of PROFILS_SEED) {
@@ -279,6 +281,22 @@ export class TenantService {
 
     // Convertir r_source de enum → varchar pour accepter la valeur 'transfert'
     await run(`ALTER TABLE t_historique_stock ALTER COLUMN r_source TYPE VARCHAR(20) USING r_source::text`);
+
+    // Module caisses physiques
+    await run(`
+      CREATE TABLE IF NOT EXISTS t_caisses (
+        id SERIAL PRIMARY KEY,
+        r_nom VARCHAR(100) NOT NULL,
+        r_code VARCHAR(20) NOT NULL,
+        r_description TEXT,
+        r_emplacement VARCHAR(150),
+        r_statut VARCHAR(10) DEFAULT 'ACTIVE',
+        "boutiqueId" INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        deleted_at TIMESTAMP
+      )`);
+    await run(`ALTER TABLE t_sessions_caisse ADD COLUMN IF NOT EXISTS "caisseId" INTEGER REFERENCES t_caisses(id) ON DELETE SET NULL`);
 
     // Vendeur réel sur la vente (peut différer du caissier connecté)
     await run(`ALTER TABLE t_ventes ADD COLUMN IF NOT EXISTS "vendeurId" INTEGER REFERENCES utilisateurs(id)`);

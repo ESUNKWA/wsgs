@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsOptional, ValidateNested } from 'class-validator';
 import { FondParModeDto } from './fond-par-mode.dto';
 
 export class OuvrirCaisseDto {
@@ -8,6 +8,9 @@ export class OuvrirCaisseDto {
 
   @IsNotEmpty({ message: 'Le caissier est requis' })
   caissier!: string;
+
+  @IsOptional()
+  caisse_id?: number;
 
   @ValidateNested()
   @Type(() => FondParModeDto)

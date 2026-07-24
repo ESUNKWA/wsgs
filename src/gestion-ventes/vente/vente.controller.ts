@@ -22,6 +22,7 @@ export class VenteController {
     @Query('montant') montant?: string,
     @Query('date_debut') date_debut?: string,
     @Query('date_fin') date_fin?: string,
+    @Query('utilisateur') utilisateur?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -31,6 +32,7 @@ export class VenteController {
       montant: montant ? +montant : undefined,
       date_debut,
       date_fin,
+      utilisateur: utilisateur ? +utilisateur : undefined,
       page: page ? +page : 1,
       limit: limit ? +limit : 20,
     });

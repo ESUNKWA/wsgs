@@ -27,4 +27,7 @@ export class CreateBoutiqueDto {
 
     @IsOptional()
     type: 'boutique' | 'restaurant' | 'entrepot' | 'departement';
+
+    @IsOptional()
+    modes_paiement: string[];
 }
