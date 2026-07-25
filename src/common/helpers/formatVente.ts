@@ -22,6 +22,7 @@ export function formatVente(vente: any, produits?: { id: number; nom: string }[]
     montant_recu: vente?.montant_recu,
     monnaie_rendu: vente?.monnaie_rendu,
     montant_total_apres_remise: vente?.montant_total_apres_remise,
+    mode_paiement: vente?.mode_paiement,
     statut: vente?.statut,
     reference: vente?.reference,
     date_vente: vente?.date_vente,

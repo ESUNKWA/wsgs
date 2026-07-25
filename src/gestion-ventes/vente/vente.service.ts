@@ -13,6 +13,7 @@ import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entit
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { EventsService } from 'src/events/events.service';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 
 @Injectable()
 export class VenteService {
@@ -21,6 +22,7 @@ export class VenteService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly eventsService: EventsService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   private get dataSource() { return this.tenantContext.getDataSource(); }
@@ -136,10 +138,17 @@ export class VenteService {
 
         await manager.update(Vente, venteSauvegarde.id, { recu_data: venteFormattee });
 
-        return { idVente: venteSauvegarde.id };
+        return { idVente: venteSauvegarde.id, recu_data: venteFormattee };
       });
       // Notifier le dashboard en temps réel après commit de la transaction
       this.eventsService.emit(+boutiqueId, 'vente.created');
+
+      // Notification WhatsApp client — fire-and-forget (ne bloque pas la réponse)
+      if (result?.recu_data?.telephone_client) {
+        const structureId: number | undefined = this.tenantContext.getStructureId() ?? undefined;
+        this.whatsappService.notifierVente(result.recu_data, { structureId }).catch(() => null);
+      }
+
       return result;
     } catch (error: any) {
       throw new InternalServerErrorException(error.message);
@@ -356,6 +365,38 @@ export class VenteService {
     }
 
     return updated!;
+  }
+
+  async envoyerRecuWhatsapp(
+    id: number,
+    opts?: { documentUrl?: string; nomFichier?: string },
+  ): Promise<{ envoye: boolean; destinataire?: string }> {
+    const vente = await this.venteRepository.findOne({ where: { id } });
+    if (!vente) throw new NotFoundException('Vente introuvable');
+
+    const recu = vente.recu_data;
+    this.logger.log(`[WHATSAPP] Envoi du reçu WhatsApp pour venteId=${id} à ${recu?.telephone_client ?? 'aucun numéro'}`);
+    if (!recu?.telephone_client) {
+      throw new BadRequestException('Aucun numéro de téléphone client pour cette vente');
+    }
+
+    const structureId: number | undefined = this.tenantContext.getStructureId() ?? undefined;
+
+    if (opts?.documentUrl) {
+      // Envoyer le PDF comme document WhatsApp
+      await this.whatsappService.envoyerDocument(
+        recu.telephone_client,
+        opts.documentUrl,
+        opts.nomFichier ?? `Reçu_${recu.reference ?? id}.pdf`,
+        { structureId, type: 'recu_vente' },
+      );
+    } else {
+      // Envoyer le reçu formaté en texte
+      await this.whatsappService.envoyerRecu(recu, { structureId });
+    }
+
+    const numero = this.whatsappService.normaliserNumero(recu.telephone_client);
+    return { envoye: true, destinataire: numero ?? recu.telephone_client };
   }
 
   remove(id: number) {

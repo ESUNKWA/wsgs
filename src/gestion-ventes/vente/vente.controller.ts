@@ -45,6 +45,15 @@ export class VenteController {
     return this.responseService.success('vente trouvée', data);
   }
 
+  @Post(':id/whatsapp-recu')
+  async envoyerRecuWhatsapp(
+    @Param('id') id: string,
+    @Body() body?: { documentUrl?: string; nomFichier?: string },
+  ) {
+    const data = await this.venteService.envoyerRecuWhatsapp(+id, body);
+    return this.responseService.success('Reçu envoyé par WhatsApp', data);
+  }
+
   @Patch(':id/regulariser')
   async regulariser(
     @Param('id') id: string,

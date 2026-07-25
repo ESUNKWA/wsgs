@@ -57,6 +57,8 @@ import { CommandeTableModule } from './gestion-restaurant/commande-table/command
 import { MenuJourModule } from './gestion-restaurant/menu-jour/menu-jour.module';
 import { PublicMenuModule } from './gestion-restaurant/public-menu/public-menu.module';
 import { SmsLog } from './sms/entities/sms-log.entity';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { WhatsappLog } from './whatsapp/entities/whatsapp-log.entity';
 import { TransfertStockModule } from './gestion-achats/transfert-stock/transfert-stock.module';
 import { BonSortieModule } from './gestion-achats/bon-sortie/bon-sortie.module';
 import { ModuleStructure } from './modules/entities/module-structure.entity';
@@ -80,7 +82,7 @@ import { ConfigurationEcranModule } from './configuration-ecran/configuration-ec
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, ModuleStructure, ConfigurationEcran],
+      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, WhatsappLog, ModuleStructure, ConfigurationEcran],
       synchronize: true,
     }),
     ConfigModule.forRoot(), 
@@ -113,6 +115,7 @@ import { ConfigurationEcranModule } from './configuration-ecran/configuration-ec
     InscriptionModule,
     ScheduleModule.forRoot(),
     SmsModule,
+    WhatsappModule,
     TableRestaurantModule,
     RecetteModule,
     CommandeTableModule,
