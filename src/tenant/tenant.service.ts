@@ -199,6 +199,7 @@ export class TenantService {
     await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`);
     await run(`ALTER TABLE t_boutiques ALTER COLUMN r_telephone DROP NOT NULL`);
     await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_modes_paiement JSONB DEFAULT '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]'`);
+    await run(`UPDATE t_boutiques SET r_modes_paiement = '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]' WHERE r_modes_paiement IS NULL`);
 
     // Sync profils — upsert all seed profils so existing tenants get new roles
     for (const p of PROFILS_SEED) {

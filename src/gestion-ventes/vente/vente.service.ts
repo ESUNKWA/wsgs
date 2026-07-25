@@ -375,7 +375,7 @@ export class VenteService {
     if (!vente) throw new NotFoundException('Vente introuvable');
 
     const recu = vente.recu_data;
-    this.logger.log(`[WHATSAPP] Envoi du reçu WhatsApp pour venteId=${id} à ${recu?.telephone_client ?? 'aucun numéro'}`);
+    
     if (!recu?.telephone_client) {
       throw new BadRequestException('Aucun numéro de téléphone client pour cette vente');
     }
