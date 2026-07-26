@@ -13,6 +13,10 @@ interface AppEvent {
 export class EventsService {
   private readonly stream$ = new Subject<AppEvent>();
 
+  // Flux brut, tous boutiques confondus — consommé par EventsGateway (WebSocket)
+  // pour rediffuser chaque événement dans la room de sa boutique.
+  readonly all$: Observable<AppEvent> = this.stream$.asObservable();
+
   emit(boutiqueId: number, type: string, data?: any): void {
     this.stream$.next({ boutiqueId, type, data });
   }
