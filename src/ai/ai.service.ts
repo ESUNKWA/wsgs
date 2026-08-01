@@ -325,8 +325,13 @@ Règles importantes :
 
     const meilleurProduit = topProduits[0]?.nom ?? null;
 
+    const pad = (n: number) => String(n).padStart(2, '0');
+    // Formatage en date locale (pas toISOString, qui reconvertit en UTC et
+    // décale d'un jour dès que le serveur tourne dans un fuseau > UTC).
+    const dateLocale = `${debutAujourdhui.getFullYear()}-${pad(debutAujourdhui.getMonth() + 1)}-${pad(debutAujourdhui.getDate())}`;
+
     return {
-      date: debutAujourdhui.toISOString().split('T')[0],
+      date: dateLocale,
       boutique_id: boutiqueId,
       ventes: {
         aujourd_hui: nbVentes,
