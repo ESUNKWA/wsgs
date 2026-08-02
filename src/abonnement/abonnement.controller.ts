@@ -146,8 +146,13 @@ export class AbonnementController {
   @Post(':structureId/boutiques/sync')
   async syncBoutiques(@Param('structureId') structureId: string) {
     const ds = await this.tenantService.getDataSource(+structureId);
+    // Seules les unités commerciales (boutique/restaurant) sont facturables —
+    // un entrepôt (ou département) n'est pas une boutique supplémentaire.
     const boutiques = await ds.getRepository(Boutique).find({
-      where: { structure_id: +structureId, is_active: true },
+      where: [
+        { structure_id: +structureId, is_active: true, type: 'boutique' as any },
+        { structure_id: +structureId, is_active: true, type: 'restaurant' as any },
+      ],
       order: { id: 'ASC' },
     });
     const data = await this.abonnementService.syncBoutiquesExistantes(+structureId, boutiques);
