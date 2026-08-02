@@ -8,17 +8,39 @@ import { HistoriqueStock } from '../historique-stock/entities/historique-stock.e
 import { Produit } from 'src/config/produit/entities/produit.entity';
 import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
+import { ModuleStructureService } from 'src/modules/module-structure.service';
 
 @Injectable()
 export class AchatService {
 
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly moduleStructureService: ModuleStructureService,
+  ) {}
 
   private get dataSource() { return this.tenantContext.getDataSource(); }
   private get achatRepository() { return this.dataSource.getRepository(Achat); }
 
+  /** Le prix d'achat est obligatoire par défaut ; certains clients (SaaS) désactivent
+   *  cette exigence via le module 'prix_achat_optionnel'. */
+  private async prixAchatObligatoire(): Promise<boolean> {
+    const structureId = this.tenantContext.getStructureId();
+    if (!structureId) return true;
+    const modules = await this.moduleStructureService.getActiveModules(structureId);
+    return !modules.includes('prix_achat_optionnel');
+  }
+
+  private async validerPrixLignes(detailAchat: any[]): Promise<void> {
+    if (!(await this.prixAchatObligatoire())) return;
+    const ligneSansPrix = detailAchat.find((l: any) => !(Number(l.prix_unitaire) > 0));
+    if (ligneSansPrix) {
+      throw new BadRequestException('Le prix d\'achat est obligatoire pour chaque produit approvisionné.');
+    }
+  }
+
   async create(createAchatDto: CreateAchatDto): Promise<Achat> {
     try {
+      await this.validerPrixLignes(createAchatDto.detail_achat);
       return await this.dataSource.transaction(async (manager) => {
         const telephone = String((createAchatDto as any).user ?? '').trim();
         let tenantUser: Utilisateur | null = null;
@@ -39,6 +61,9 @@ export class AchatService {
             produit: ligne.produit,
             quantite: ligne.quantite,
             prix_unitaire: ligne.prix_unitaire,
+            mode_saisie: ligne.mode_saisie ?? 'unite',
+            quantite_colis: ligne.quantite_colis ?? null,
+            prix_colis: ligne.prix_colis ?? null,
             achat,
           })
         );
@@ -72,6 +97,7 @@ export class AchatService {
         return achatSauvegarde;
       });
     } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(error.message);
     }
   }
@@ -116,6 +142,7 @@ export class AchatService {
 
   async update(id: number, updateAchatDto: any): Promise<Achat> {
     try {
+      await this.validerPrixLignes(updateAchatDto.detail_achat);
       return await this.dataSource.transaction(async (manager) => {
         const telephone = String(updateAchatDto.user ?? '').trim();
         let tenantUser: Utilisateur | null = null;
@@ -147,6 +174,9 @@ export class AchatService {
           l.produit = ligne.produit;
           l.quantite = ligne.quantite;
           l.prix_unitaire = ligne.prix_unitaire;
+          l.mode_saisie = ligne.mode_saisie ?? 'unite';
+          l.quantite_colis = ligne.quantite_colis ?? null;
+          l.prix_colis = ligne.prix_colis ?? null;
           l.achat = achat;
           return l;
         });
@@ -183,6 +213,7 @@ export class AchatService {
         return achat;
       });
     } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(error.message);
     }
   }

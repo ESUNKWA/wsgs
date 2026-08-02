@@ -1,5 +1,6 @@
-import { IsNotEmpty } from "class-validator";
+import { IsNotEmpty, IsOptional } from "class-validator";
 import { Categorie } from "src/config/categorie/entities/categorie.entity";
+import { Fournisseur } from "src/config/fournisseur/entities/fournisseur.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
 
 export class CreateProduitDto {
@@ -24,9 +25,18 @@ export class CreateProduitDto {
     })
     boutique: Boutique[];
 
+    @IsOptional()
+    fournisseur: Fournisseur;
+
     stock_disponible: number;
     stock_initial: number;
     seuil_alert: number;
     unite_mesure: string;
     code_barre: string;
+
+    @IsOptional()
+    unite_conditionnement: string;
+
+    @IsOptional()
+    quantite_par_conditionnement: number;
 }

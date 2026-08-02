@@ -2,6 +2,7 @@ import { Achat } from "src/gestion-achats/achat/entities/achat.entity";
 import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-genarate";
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Produit } from "src/config/produit/entities/produit.entity";
 
 @Entity('t_fournisseurs')
 export class Fournisseur extends defaultDateGeneratorHelper {
@@ -28,7 +29,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
 
     @Column({
         name: 'r_contact',
-        nullable: false,
+        nullable: true,
         type: 'character varying',
         length: 20,
         unique: false
@@ -68,4 +69,7 @@ export class Fournisseur extends defaultDateGeneratorHelper {
 
     @ManyToOne(() => Boutique, (boutique) => boutique.fournisseur, { cascade: true })
     boutique!: Boutique;
+
+    @OneToMany(type => Produit, (produit) => produit.fournisseur)
+    produits!: Produit[];
 }

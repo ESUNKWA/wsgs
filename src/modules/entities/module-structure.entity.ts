@@ -9,7 +9,8 @@ export type ModuleCode =
   | 'ia'
   | 'restauration'
   | 'clients'
-  | 'fournisseurs';
+  | 'fournisseurs'
+  | 'prix_achat_optionnel';
 
 export const ALL_MODULES: ModuleCode[] = [
   'commandes_fournisseurs',
@@ -21,6 +22,7 @@ export const ALL_MODULES: ModuleCode[] = [
   'restauration',
   'clients',
   'fournisseurs',
+  'prix_achat_optionnel',
 ];
 
 @Entity('module_structures')

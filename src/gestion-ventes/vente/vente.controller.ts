@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { VenteService } from './vente.service';
 import { CreateVenteDto } from './dto/create-vente.dto';
+import { CreateVenteComptageDto } from './dto/create-vente-comptage.dto';
 import { UpdateVenteDto } from './dto/update-vente.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
@@ -13,6 +14,12 @@ export class VenteController {
   async create(@Body() createVenteDto: CreateVenteDto): Promise<DataRequest> {
     const data =  await this.venteService.create(createVenteDto);
     return this.responseService.success('Enregistrement effectué avec succès', data);
+  }
+
+  @Post('comptage')
+  async createFromComptage(@Body() createVenteComptageDto: CreateVenteComptageDto): Promise<DataRequest> {
+    const data = await this.venteService.createFromComptage(createVenteComptageDto);
+    return this.responseService.success('Point de vente enregistré avec succès', data);
   }
 
   @Get()

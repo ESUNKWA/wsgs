@@ -24,7 +24,7 @@ export class ProduitController {
 
   @Get()
   @HttpCode(200)
-  async findAll(@Query() query: { boutique: number; page?: number; limit?: number }): Promise<any> {
+  async findAll(@Query() query: { boutique?: number; fournisseur?: number; page?: number; limit?: number }): Promise<any> {
     const result = await this.produitService.findAll(query);
     return this.responseService.successPaginated('Liste des produits', result);
   }

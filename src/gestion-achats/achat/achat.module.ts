@@ -3,9 +3,10 @@ import { AchatService } from './achat.service';
 import { AchatController } from './achat.controller';
 import { ResponseService } from 'src/services/response/response.service';
 import { DetailAchatModule } from '../detail-achat/detail-achat.module';
+import { ModuleStructureModule } from 'src/modules/module-structure.module';
 
 @Module({
-  imports: [DetailAchatModule],
+  imports: [DetailAchatModule, ModuleStructureModule],
   controllers: [AchatController],
   providers: [AchatService, ResponseService],
   exports: [AchatService],

@@ -4,6 +4,7 @@ import { defaultDateGeneratorHelper } from "src/common/helpers/default-date-gena
 import { Column, Entity, Index,  ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { HistoriqueStock } from "src/gestion-achats/historique-stock/entities/historique-stock.entity";
 import { Boutique } from "src/gestion-boutiques/boutique/entities/boutique.entity";
+import { Fournisseur } from "src/config/fournisseur/entities/fournisseur.entity";
 
 @Unique(['boutique', 'nom'])
 @Entity('t_produits')
@@ -106,11 +107,23 @@ export class Produit extends defaultDateGeneratorHelper {
     @ManyToOne(type => Boutique, (boutique) => boutique.produit, {eager: true})
     boutique: Boutique[];
 
+    @ManyToOne(type => Fournisseur, (fournisseur) => fournisseur.produits, {nullable: true, eager: true})
+    fournisseur: Fournisseur | null;
+
     @Column({name: 'r_seuil_alert', type:'integer', default: 2, nullable: true})
     seuil_alert: number;
 
     @Column({name: 'r_unite_mesure', type: 'character varying', length: 20, nullable: true, default: 'pièce'})
     unite_mesure: string;
+
+    // Conditionnement d'approvisionnement (carton, casier, palette…) — optionnel.
+    // Le stock reste toujours compté en `unite_mesure` (détail) ; ce facteur ne sert
+    // qu'à convertir une saisie d'achat "par carton" en unités de détail.
+    @Column({name: 'r_unite_conditionnement', type: 'character varying', length: 20, nullable: true})
+    unite_conditionnement: string | null;
+
+    @Column({name: 'r_quantite_par_conditionnement', type: 'real', nullable: true})
+    quantite_par_conditionnement: number | null;
 
     @Index()
     @Column({name: 'r_code_barre', type: 'character varying', length: 100, nullable: true})

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { CreateVenteDto } from './dto/create-vente.dto';
+import { CreateVenteComptageDto } from './dto/create-vente-comptage.dto';
 import { In } from 'typeorm';
 import { HistoriqueStock } from 'src/gestion-achats/historique-stock/entities/historique-stock.entity';
 import { Vente } from './entities/vente.entity';
@@ -151,6 +152,185 @@ export class VenteService {
 
       return result;
     } catch (error: any) {
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  /**
+   * Vente issue d'un "point après vente" : le vendeur saisit la quantité restante
+   * par produit, la quantité vendue et le montant par produit sont déduits automatiquement.
+   */
+  async createFromComptage(dto: CreateVenteComptageDto): Promise<any> {
+    try {
+      const boutiqueId = (dto.boutique as any)?.id ?? dto.boutique;
+      const result = await this.dataSource.transaction(async (manager) => {
+        const telephone = String((dto as any).user ?? '').trim();
+        let tenantUser: Utilisateur | null = null;
+        if (telephone) {
+          tenantUser = await manager.findOne(Utilisateur, { where: { telephone } });
+          if (!tenantUser) throw new BadRequestException(`Utilisateur introuvable (tél: ${telephone})`);
+        }
+
+        const boutique = await manager.findOne(Boutique, { where: { id: boutiqueId } });
+        if (!boutique) throw new BadRequestException('Boutique introuvable');
+
+        let sessionActive: SessionCaisse | null = null;
+        if (boutique.gestion_caisse_activee) {
+          sessionActive = await manager.findOne(SessionCaisse, {
+            where: {
+              boutique: { id: boutiqueId },
+              caissier: tenantUser ? { id: tenantUser.id } : undefined,
+              statut: 'ouverte',
+            },
+          });
+          if (!sessionActive) {
+            throw new BadRequestException(
+              'Vous devez ouvrir votre session de caisse avant de pouvoir enregistrer un point de vente.',
+            );
+          }
+        }
+
+        const vendeurTel = String((dto as any).vendeur_tel ?? '').trim();
+        let vendeur: Utilisateur | null = null;
+        if (vendeurTel) {
+          vendeur = await manager.findOne(Utilisateur, { where: { telephone: vendeurTel } });
+        }
+
+        if (!dto.lignes?.length) {
+          throw new BadRequestException('Aucun produit compté');
+        }
+
+        const produitsIds = dto.lignes.map((l) => l.produit);
+        const produits = await manager.findBy(Produit, { id: In(produitsIds), boutique: { id: boutiqueId } as any });
+
+        const lignesCalculees = dto.lignes
+          .map((ligne) => {
+            const produit = produits.find((p) => p.id == ligne.produit);
+            if (!produit) throw new BadRequestException(`Produit introuvable (id: ${ligne.produit})`);
+
+            const stock_avant = produit.stock_disponible ?? 0;
+            const quantite_restante = Number(ligne.quantite_restante);
+            if (isNaN(quantite_restante) || quantite_restante < 0) {
+              throw new BadRequestException(`Quantité restante invalide pour le produit "${produit.nom}"`);
+            }
+
+            const quantite_vendue = stock_avant - quantite_restante;
+            if (quantite_vendue < 0) {
+              throw new BadRequestException(
+                `La quantité restante saisie pour "${produit.nom}" (${quantite_restante}) dépasse le stock disponible (${stock_avant}).`,
+              );
+            }
+
+            const prix_unitaire_vente = ligne.prix_unitaire_vente ?? produit.prix_vente;
+            return {
+              produit,
+              stock_avant,
+              quantite_restante,
+              quantite_vendue,
+              prix_unitaire_vente,
+              montant_ligne: quantite_vendue * prix_unitaire_vente,
+            };
+          })
+          .filter((l) => l.quantite_vendue > 0);
+
+        if (lignesCalculees.length === 0) {
+          throw new BadRequestException(
+            'Aucune vente détectée : les quantités restantes saisies correspondent au stock disponible.',
+          );
+        }
+
+        const montant_total = lignesCalculees.reduce((sum, l) => sum + l.montant_ligne, 0);
+        const remise = dto.remise ?? 0;
+        const montant_total_apres_remise = montant_total - remise;
+
+        const vente = manager.create(Vente, {
+          reference: ReferenceGeneratorHelper.generate('VNT'),
+          statut: dto.statut ?? 'payer',
+          mode_paiement: dto.mode_paiement ?? 'espece',
+          montant_total,
+          remise,
+          montant_total_apres_remise,
+          montant_recu: dto.montant_recu,
+          details_paiement: dto.details_paiement,
+          boutique: { id: boutiqueId } as any,
+          user: tenantUser ?? undefined,
+          vendeur: vendeur ?? tenantUser ?? undefined,
+          session_caisse: sessionActive,
+        } as any);
+        const venteSauvegarde = await manager.save(vente);
+
+        const lignesDetail = lignesCalculees.map((l) =>
+          manager.create(DetailVente, {
+            produit: l.produit,
+            quantite: l.quantite_vendue,
+            prix_unitaire_vente: l.prix_unitaire_vente,
+            vente,
+          }),
+        );
+        await manager.save(lignesDetail);
+
+        const lignesHistorik = lignesCalculees.map((l) =>
+          manager.create(HistoriqueStock, {
+            produit: l.produit,
+            quantite: l.quantite_vendue,
+            mouvement: 'sortie',
+            source: 'vente',
+            vente,
+            stock_avant: l.stock_avant,
+            stock_apres: l.quantite_restante,
+            utilisateur: tenantUser ?? undefined,
+          }),
+        );
+        await manager.save(lignesHistorik);
+
+        for (const l of lignesCalculees) {
+          l.produit.stock_disponible = l.quantite_restante;
+        }
+        await manager.save(Produit, lignesCalculees.map((l) => l.produit));
+
+        const venteFormattee = formatVente(
+          {
+            detail_vente: lignesCalculees.map((l) => ({
+              produit: l.produit,
+              quantite: l.quantite_vendue,
+              prix_unitaire_vente: l.prix_unitaire_vente,
+            })),
+            montant_total,
+            remise,
+            montant_recu: dto.montant_recu,
+            montant_total_apres_remise,
+            mode_paiement: vente.mode_paiement,
+            statut: vente.statut,
+            reference: venteSauvegarde.reference,
+            date_vente: venteSauvegarde.created_at,
+            boutique,
+          },
+          produits.map((p) => ({ id: p.id, nom: p.nom })),
+        );
+
+        await manager.update(Vente, venteSauvegarde.id, { recu_data: venteFormattee });
+
+        return {
+          idVente: venteSauvegarde.id,
+          reference: venteSauvegarde.reference,
+          recu_data: venteFormattee,
+          lignes: lignesCalculees.map((l) => ({
+            produit: l.produit.id,
+            nom_produit: l.produit.nom,
+            stock_avant: l.stock_avant,
+            quantite_restante: l.quantite_restante,
+            quantite_vendue: l.quantite_vendue,
+            prix_unitaire_vente: l.prix_unitaire_vente,
+            montant_ligne: l.montant_ligne,
+          })),
+        };
+      });
+
+      this.eventsService.emit(+boutiqueId, 'vente.created');
+
+      return result;
+    } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(error.message);
     }
   }

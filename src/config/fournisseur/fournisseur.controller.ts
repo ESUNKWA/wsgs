@@ -1,11 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { FournisseurService } from './fournisseur.service';
 import { CreateFournisseurDto } from './dto/create-fournisseur.dto';
 import { UpdateFournisseurDto } from './dto/update-fournisseur.dto';
 import { DataRequest } from 'src/interface/DataRequest';
 import { ResponseService } from 'src/services/response/response.service';
-import { AuthGuard } from '@nestjs/passport';
-import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 
 @Controller('fournisseur')
 export class FournisseurController {
@@ -21,27 +19,6 @@ export class FournisseurController {
   async findAll(): Promise<DataRequest> {
     const data = await this.fournisseurService.findAll();
     return this.responseService.success('Liste des fournisseurs', data);
-  }
-
-  
-  @Get('boutique')
-  async findByBoutique(
-    @Query('boutiqueId', new ParseIntPipe({ errorHttpStatusCode: 400 })) boutique: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<any> {
-    const result = await this.fournisseurService.findByBoutique(boutique, Number(page) || 1, Number(limit) || 50);
-    return this.responseService.successPaginated('Liste des fournisseurs', result);
-  }
-
-  @Get('structure/:id')
-  async findByStructure(
-    @Param('id', new ParseIntPipe({ errorHttpStatusCode: 400 })) structureId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<any> {
-    const result = await this.fournisseurService.findByStructure(structureId, Number(page) || 1, Number(limit) || 50);
-    return this.responseService.successPaginated('Liste des fournisseurs', result);
   }
 
   @Get(':id')

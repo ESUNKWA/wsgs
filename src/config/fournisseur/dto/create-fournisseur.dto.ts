@@ -8,7 +8,7 @@ export class CreateFournisseurDto {
     @IsOptional()
     addresse_geo: string;
 
-    @IsNotEmpty({message: 'Veuillez saisir le numéro du fournisseur'})
+    @IsOptional()
     contact: string;
 
     @IsOptional()
@@ -19,7 +19,4 @@ export class CreateFournisseurDto {
 
     @IsOptional()
     contact_interlocuteur: string;
-
-    @IsOptional()
-    boutique: number;
 }

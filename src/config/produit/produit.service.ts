@@ -41,16 +41,23 @@ export class ProduitService {
     }
   }
 
-  async findAll(query: { boutique: number; page?: number; limit?: number }) {
+  async findAll(query: { boutique?: number; fournisseur?: number; page?: number; limit?: number }) {
     try {
-      const { boutique } = query;
-      if (isNaN(boutique)) throw new BadRequestException('Veuillez préciser la boutique');
+      const { fournisseur } = query;
+      const boutiqueId = Number(query.boutique);
+      const hasBoutique = !isNaN(boutiqueId);
+      if (!hasBoutique && !fournisseur) {
+        throw new BadRequestException('Veuillez préciser la boutique ou le fournisseur');
+      }
       const page = Number(query.page) || 1;
       const limit = Number(query.limit) || 50;
       const skip = (page - 1) * limit;
 
       const [produits, total] = await this.produitRepository.findAndCount({
-        where: { boutique: { id: +boutique } },
+        where: {
+          ...(hasBoutique ? { boutique: { id: boutiqueId } } : {}),
+          ...(fournisseur ? { fournisseur: { id: +fournisseur } } : {}),
+        },
         order: { nom: 'ASC' },
         skip,
         take: limit,

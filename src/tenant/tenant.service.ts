@@ -310,6 +310,21 @@ export class TenantService {
         AND EXISTS (SELECT 1 FROM t_boutiques)
     `);
 
+    // Lien produit → fournisseur (filtrage des produits par fournisseur à l'approvisionnement)
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS "fournisseurId" INTEGER REFERENCES t_fournisseurs(id)`);
+
+    // Conditionnement d'approvisionnement (carton, casier…) — conversion vers l'unité de détail
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_unite_conditionnement VARCHAR(20)`);
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_quantite_par_conditionnement REAL`);
+
+    // Le contact fournisseur n'est plus obligatoire
+    await run(`ALTER TABLE t_fournisseurs ALTER COLUMN r_contact DROP NOT NULL`);
+
+    // Traçabilité du mode de saisie (unité / carton) sur chaque ligne d'achat
+    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`);
+    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`);
+    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_prix_colis REAL`);
+
     // Migrer la contrainte unique globale sur r_nom → unique composite (r_nom, boutiqueId)
     // afin de permettre le même nom de catégorie dans différentes boutiques.
     await run(`
