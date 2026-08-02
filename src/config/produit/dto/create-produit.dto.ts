@@ -39,4 +39,13 @@ export class CreateProduitDto {
 
     @IsOptional()
     quantite_par_conditionnement: number;
+
+    @IsOptional()
+    prix_promo: number;
+
+    @IsOptional()
+    promo_date_debut: string;
+
+    @IsOptional()
+    promo_date_fin: string;
 }

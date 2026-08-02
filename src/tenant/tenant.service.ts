@@ -325,6 +325,15 @@ export class TenantService {
     await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`);
     await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_prix_colis REAL`);
 
+    // Idem pour les lignes de transfert de stock entrepôt → boutiques (pas de prix ici)
+    await run(`ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`);
+    await run(`ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`);
+
+    // Promotion temporaire sur le prix de vente (une seule période active par produit)
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_prix_promo REAL`);
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_debut DATE`);
+    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_fin DATE`);
+
     // Migrer la contrainte unique globale sur r_nom → unique composite (r_nom, boutiqueId)
     // afin de permettre le même nom de catégorie dans différentes boutiques.
     await run(`

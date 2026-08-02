@@ -25,7 +25,7 @@ export class TransfertStockService {
     boutique_destination: number;
     notes?: string;
     telephone?: string;
-    lignes: { produit: number; quantite: number }[];
+    lignes: { produit: number; quantite: number; mode_saisie?: string; quantite_colis?: number }[];
   }): Promise<TransfertStock> {
     if (!dto.lignes?.length) throw new BadRequestException('Aucune ligne de transfert');
     if (dto.boutique_source === dto.boutique_destination) {
@@ -53,6 +53,8 @@ export class TransfertStockService {
           transfert: saved,
           produit: { id: l.produit } as any,
           quantite: l.quantite,
+          mode_saisie: l.mode_saisie ?? 'unite',
+          quantite_colis: l.quantite_colis ?? null,
         })
       );
       await manager.save(lignes);
@@ -151,6 +153,8 @@ export class TransfertStockService {
             stock_disponible: 0,
             seuil_alert: ligne.produit.seuil_alert ?? 2,
             unite_mesure: ligne.produit.unite_mesure ?? 'pièce',
+            unite_conditionnement: ligne.produit.unite_conditionnement ?? null,
+            quantite_par_conditionnement: ligne.produit.quantite_par_conditionnement ?? null,
             description: ligne.produit.description ?? null,
             categorie: ligne.produit.categorie ?? null,
             boutique: { id: destId } as any,
@@ -241,7 +245,7 @@ export class TransfertStockService {
     boutique_source?: number;
     boutique_destination?: number;
     notes?: string;
-    lignes?: { produit: number; quantite: number }[];
+    lignes?: { produit: number; quantite: number; mode_saisie?: string; quantite_colis?: number }[];
   }): Promise<TransfertStock> {
     const transfert = await this.findOne(id);
     if (transfert.statut !== 'brouillon') {
@@ -265,6 +269,8 @@ export class TransfertStockService {
             transfert: { id } as any,
             produit: { id: l.produit } as any,
             quantite: l.quantite,
+            mode_saisie: l.mode_saisie ?? 'unite',
+            quantite_colis: l.quantite_colis ?? null,
           })
         );
         await manager.save(lignes);

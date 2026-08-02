@@ -26,6 +26,19 @@ export class ProduitService {
     return this.tenantContext.getDataSource().getRepository(Categorie);
   }
 
+  /** Ajoute `prix_effectif` (prix promo si la période est active, sinon prix_vente) et `en_promo`. */
+  private withPrixEffectif<T extends Produit>(produit: T): T & { prix_effectif: number; en_promo: boolean } {
+    const today = new Date().toISOString().slice(0, 10);
+    const enPromo = !!produit.prix_promo
+      && !!produit.promo_date_debut && !!produit.promo_date_fin
+      && produit.promo_date_debut <= today && today <= produit.promo_date_fin;
+    return {
+      ...produit,
+      prix_effectif: enPromo ? Number(produit.prix_promo) : produit.prix_vente,
+      en_promo: enPromo,
+    };
+  }
+
   async create(createProduitDto: CreateProduitDto, file?: Express.Multer.File): Promise<Produit> {
     try {
       createProduitDto.stock_disponible = createProduitDto.stock_initial;
@@ -64,7 +77,7 @@ export class ProduitService {
       });
 
       const items = produits.map((produit) => ({
-        ...produit,
+        ...this.withPrixEffectif(produit),
         imageUrl: produit.image ? `${String(process.env.BASE_URL)}/${produit.image}` : null,
       }));
 
@@ -77,7 +90,7 @@ export class ProduitService {
   async findOne(id: number): Promise<Produit> {
     const data = await this.produitRepository.findOne({ where: { id } });
     if (!data) throw new NotFoundException('Produit inexistant');
-    return data;
+    return this.withPrixEffectif(data);
   }
 
   async findByCodeBarre(code: string, boutiqueId: number): Promise<Produit> {
@@ -85,7 +98,7 @@ export class ProduitService {
       where: { code_barre: code, boutique: { id: boutiqueId } },
     });
     if (!produit) throw new NotFoundException('Aucun produit trouvé pour ce code-barres');
-    return produit;
+    return this.withPrixEffectif(produit);
   }
 
   async update(id: number, updateProduitDto: UpdateProduitDto, file?: Express.Multer.File) {

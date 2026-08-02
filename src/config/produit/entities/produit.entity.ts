@@ -128,4 +128,15 @@ export class Produit extends defaultDateGeneratorHelper {
     @Index()
     @Column({name: 'r_code_barre', type: 'character varying', length: 100, nullable: true})
     code_barre: string | null;
+
+    // Promotion temporaire : si renseignée et que la date du jour est dans l'intervalle,
+    // `prix_promo` remplace `prix_vente` (calculé à la lecture, jamais persisté ailleurs).
+    @Column({name: 'r_prix_promo', type: 'real', nullable: true})
+    prix_promo: number | null;
+
+    @Column({name: 'r_promo_date_debut', type: 'date', nullable: true})
+    promo_date_debut: string | null;
+
+    @Column({name: 'r_promo_date_fin', type: 'date', nullable: true})
+    promo_date_fin: string | null;
 }
