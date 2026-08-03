@@ -43,32 +43,11 @@ function sortByPlan<T extends { plan: string }>(items: T[]): T[] {
 
 /** Prix mensuel de référence par catégorie (XOF) — Côte d'Ivoire */
 const TARIF_MENSUEL_PAR_CATEGORIE: Record<string, number> = {
-  'Épicerie / Boutique de quartier': 5000,
-  'Maquis / Gargote':                5000,
-  'Café / Bar':                       5000,
-  'Salon de coiffure / Barbier':      5000,
-  'Boulangerie / Pâtisserie':         6000,
-  'Fast-food / Snack':                6000,
-  'Poissonnerie':                     6000,
-  'Pressing / Blanchisserie':         6000,
-  'Boucherie / Charcuterie':          8000,
-  'Boutique de vêtements':            8000,
-  'Cosmétique / Beauté':              8000,
-  'Droguerie':                        8000,
-  'Papeterie / Librairie':            8000,
-  'Superette':                       10000,
-  'Quincaillerie':                   10000,
-  'Pharmacie vétérinaire':           10000,
-  'Électronique / High-tech':        15000,
-  'Restaurant':                      15000,
-  'Supermarché':                     15000,
-  'Matériaux de construction':       20000,
-  'Pharmacie':                       20000,
-  'Station-service / Carburant':     20000,
-  'Clinique / Cabinet médical':      25000,
-  'Grossiste alimentaire':           30000,
-  'Grossiste non alimentaire':       30000,
-  'Importateur / Distributeur':      40000,
+  'Petit commerce (remote)': 15000,
+  'Commerce moyen': 22000,
+  'Commerce standard (sur site)': 25000,
+  'Grande structure / multi-sites': 30000,
+  'Pharmacie': 50000,
 };
 
 /** Taux de réduction appliqué selon la durée du plan */
@@ -87,36 +66,11 @@ function calculerMontantPlan(prixMensuel: number, plan: PlanType): number {
 
 const CATEGORIES_SEED: { label: string; ordre: number }[] = [
   // Commerce alimentaire
-  { label: 'Superette',                      ordre:  1 },
-  { label: 'Supermarché',                    ordre:  2 },
-  { label: 'Épicerie / Boutique de quartier', ordre: 3 },
-  { label: 'Boulangerie / Pâtisserie',       ordre:  4 },
-  { label: 'Boucherie / Charcuterie',        ordre:  5 },
-  { label: 'Poissonnerie',                   ordre:  6 },
-  { label: 'Pharmacie',                      ordre:  7 },
-  // Restauration
-  { label: 'Restaurant',                     ordre: 10 },
-  { label: 'Fast-food / Snack',              ordre: 11 },
-  { label: 'Café / Bar',                     ordre: 12 },
-  { label: 'Maquis / Gargote',               ordre: 13 },
-  // Commerce non alimentaire
-  { label: 'Boutique de vêtements',          ordre: 20 },
-  { label: 'Quincaillerie',                  ordre: 21 },
-  { label: 'Papeterie / Librairie',          ordre: 22 },
-  { label: 'Électronique / High-tech',       ordre: 23 },
-  { label: 'Cosmétique / Beauté',            ordre: 24 },
-  { label: 'Matériaux de construction',      ordre: 25 },
-  { label: 'Droguerie',                      ordre: 26 },
-  // Services
-  { label: 'Salon de coiffure / Barbier',    ordre: 30 },
-  { label: 'Pressing / Blanchisserie',       ordre: 31 },
-  { label: 'Clinique / Cabinet médical',     ordre: 32 },
-  { label: 'Pharmacie vétérinaire',          ordre: 33 },
-  { label: 'Station-service / Carburant',    ordre: 34 },
-  // Grossiste / Distribution
-  { label: 'Grossiste alimentaire',          ordre: 40 },
-  { label: 'Grossiste non alimentaire',      ordre: 41 },
-  { label: 'Importateur / Distributeur',     ordre: 42 },
+  { label: 'Petit commerce (remote)',                      ordre:  1 },
+  { label: 'Commerce moyen',                      ordre:  2 },
+  { label: 'Commerce standard (sur site)',                      ordre:  3 },
+  { label: 'Grande structure / multi-sites',                      ordre:  4 },
+  { label: 'Pharmacie',                      ordre:  5 },
 ];
 
 @Injectable()
