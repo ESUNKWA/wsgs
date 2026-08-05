@@ -83,4 +83,13 @@ export class TenantController {
     await this.tenantService.destroyConnection(+structureId);
     return this.responseService.success('Connexion réinitialisée', null);
   }
+
+  @Delete(':structureId/database')
+  async deleteDatabase(
+    @Param('structureId') structureId: string,
+    @Body() body: { confirmDatabase: string },
+  ) {
+    await this.tenantService.deleteTenantDatabase(+structureId, body?.confirmDatabase);
+    return this.responseService.success('Base de données supprimée définitivement', null);
+  }
 }

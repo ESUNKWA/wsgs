@@ -390,6 +390,15 @@ export class TenantService {
       throw new BadRequestException(`Une configuration DB existe déjà pour la structure ${dto.structureId}`);
     }
 
+    // Empêche deux structures de pointer vers la même base (fuite de données entre tenants)
+    // si le nom saisi correspond déjà à une base assignée à une autre structure.
+    const databaseDejaAssignee = await this.configRepo.findOne({ where: { database: dto.database } });
+    if (databaseDejaAssignee) {
+      throw new BadRequestException(
+        `Le nom de base "${dto.database}" est déjà utilisé par la structure ${databaseDejaAssignee.structureId}. Choisissez un autre nom.`,
+      );
+    }
+
     // ── Étape 1 : création physique de la base (DDL — hors transaction) ───────
     await this.createDatabaseIfNotExists(dto);
 
@@ -628,6 +637,46 @@ export class TenantService {
     const ds = this.pool.get(structureId);
     if (ds?.isInitialized) await ds.destroy();
     this.pool.delete(structureId);
+  }
+
+  /**
+   * Supprime définitivement la base de données d'un tenant (DROP DATABASE) et sa
+   * configuration. Action irréversible — le nom exact de la base doit être fourni
+   * en confirmation pour éviter toute suppression accidentelle.
+   */
+  async deleteTenantDatabase(structureId: number, confirmDatabase: string): Promise<void> {
+    const config = await this.configRepo.findOne({ where: { structureId } });
+    if (!config) {
+      throw new NotFoundException(`Aucune configuration DB pour la structure ${structureId}`);
+    }
+    if (confirmDatabase !== config.database) {
+      throw new BadRequestException('Le nom de la base saisi ne correspond pas — suppression annulée.');
+    }
+
+    // Fermer le pool applicatif vers ce tenant avant de toucher à la base physique.
+    await this.destroyConnection(structureId);
+
+    const adminDs = new DataSource({
+      type: 'postgres',
+      host: config.host ?? 'localhost',
+      port: config.port ?? 5432,
+      username: config.username,
+      password: config.password,
+      database: 'postgres',
+    });
+    try {
+      await adminDs.initialize();
+      // Postgres refuse un DROP DATABASE tant que des connexions actives existent.
+      await adminDs.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+        [config.database],
+      );
+      await adminDs.query(`DROP DATABASE IF EXISTS "${config.database}"`);
+    } finally {
+      if (adminDs.isInitialized) await adminDs.destroy();
+    }
+
+    await this.configRepo.delete({ structureId });
   }
 
   async getStorageStats(): Promise<{ structureId: number; database: string; base_de_donnees: string; fichiers: Record<string, string>; total_fichiers: string }[]> {
