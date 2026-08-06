@@ -3,6 +3,7 @@ import { CreateProduitDto } from './dto/create-produit.dto';
 import { UpdateProduitDto } from './dto/update-produit.dto';
 import { Produit } from './entities/produit.entity';
 import { Categorie } from 'src/config/categorie/entities/categorie.entity';
+import { Fournisseur } from 'src/config/fournisseur/entities/fournisseur.entity';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
 import { BarcodeHelper } from 'src/common/helpers/barcode.helper';
@@ -24,6 +25,10 @@ export class ProduitService {
 
   private get categorieRepository() {
     return this.tenantContext.getDataSource().getRepository(Categorie);
+  }
+
+  private get fournisseurRepository() {
+    return this.tenantContext.getDataSource().getRepository(Fournisseur);
   }
 
   /** Ajoute `prix_effectif` (prix promo si la période est active, sinon prix_vente) et `en_promo`. */
@@ -254,6 +259,7 @@ export class ProduitService {
     file: Express.Multer.File,
     boutiqueId: number,
     defaultCategorieId?: number,
+    fournisseurIdsParLigne?: (number | null)[],
   ): Promise<{ created: number; skipped: number; errors: string[] }> {
     if (!boutiqueId || isNaN(boutiqueId)) {
       throw new BadRequestException('Veuillez préciser la boutique');
@@ -285,11 +291,14 @@ export class ProduitService {
         continue;
       }
 
-      const prixAchat = parseFloat(row['prix_achat'] ?? row['Prix achat'] ?? 0);
-      const prixVente = parseFloat(row['prix_vente'] ?? row['Prix vente'] ?? 0);
+      // Le prix d'achat est optionnel à l'import — seuls le nom et le prix de vente sont obligatoires.
+      const prixAchatBrut = row['prix_achat'] ?? row['Prix achat'];
+      const prixAchatParsed = parseFloat(prixAchatBrut ?? '');
+      const prixAchat = isNaN(prixAchatParsed) ? 0 : prixAchatParsed;
+      const prixVente = parseFloat(row['prix_vente'] ?? row['Prix vente'] ?? '');
 
-      if (isNaN(prixAchat) || isNaN(prixVente)) {
-        errors.push(`Ligne ${i + 2} (${nom}) : prix_achat et prix_vente doivent être des nombres`);
+      if (isNaN(prixVente)) {
+        errors.push(`Ligne ${i + 2} (${nom}) : le champ "prix_vente" est obligatoire et doit être un nombre`);
         skipped++;
         continue;
       }
@@ -309,6 +318,24 @@ export class ProduitService {
         categorie = defaultCategorie;
       }
 
+      // Fournisseur optionnel — choisi ligne par ligne côté front (prioritaire), sinon
+      // recherché par nom dans le fichier (les fournisseurs sont communs à toute la structure).
+      let fournisseur: Fournisseur | null = null;
+      const fournisseurIdChoisi = fournisseurIdsParLigne?.[i];
+      if (fournisseurIdChoisi) {
+        fournisseur = await this.fournisseurRepository.findOne({ where: { id: fournisseurIdChoisi } });
+      } else {
+        const fournisseurNom = String(row['fournisseur'] ?? row['Fournisseur'] ?? row['fournisseur_nom'] ?? '').trim();
+        if (fournisseurNom) {
+          fournisseur = await this.fournisseurRepository.findOne({ where: { nom: fournisseurNom } });
+          if (!fournisseur) {
+            errors.push(`Ligne ${i + 2} (${nom}) : fournisseur "${fournisseurNom}" introuvable`);
+            skipped++;
+            continue;
+          }
+        }
+      }
+
       const stockInitial = parseFloat(row['stock_initial'] ?? row['Stock initial'] ?? 0) || 0;
 
       try {
@@ -325,6 +352,7 @@ export class ProduitService {
         (entity as any).code_barre = codeBarre || BarcodeHelper.generateEan13(structureId ?? 0);
         (entity as any).description = String(row['description'] ?? row['Description'] ?? '').trim() || null;
         (entity as any).categorie   = categorie ?? null;
+        (entity as any).fournisseur = fournisseur ?? null;
         (entity as any).boutique    = { id: boutiqueId };
         await this.produitRepository.save(entity);
         created++;

@@ -10,9 +10,7 @@ export class CreateProduitDto {
     })
     nom: string;
 
-    @IsNotEmpty({
-        message: 'Veuillez saisir le prix d\'achat du produit'
-    })
+    @IsOptional()
     prix_achat: number;
 
     @IsNotEmpty()

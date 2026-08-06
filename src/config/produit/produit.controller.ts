@@ -91,11 +91,22 @@ export class ProduitController {
     @UploadedFile() file: Express.Multer.File,
     @Query('boutique') boutique: string,
     @Query('categorie') categorie?: string,
+    @Body('fournisseurs') fournisseursJson?: string,
   ): Promise<DataRequest> {
+    let fournisseurIdsParLigne: (number | null)[] | undefined;
+    if (fournisseursJson) {
+      try {
+        fournisseurIdsParLigne = JSON.parse(fournisseursJson);
+      } catch {
+        fournisseurIdsParLigne = undefined;
+      }
+    }
+
     const result = await this.produitService.importFromFile(
       file,
       +boutique,
       categorie ? +categorie : undefined,
+      fournisseurIdsParLigne,
     );
     return this.responseService.success(
       `Import terminé : ${result.created} créé(s), ${result.skipped} ignoré(s)`,
