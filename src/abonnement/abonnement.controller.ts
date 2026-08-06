@@ -54,18 +54,36 @@ export class AbonnementController {
 
   @Post('essai/:structureId')
   async demarrerEssai(@Param('structureId') structureId: string) {
+    await this.assertAuMoinsUnPointDeVente(+structureId);
     const data = await this.abonnementService.demarrerEssai(+structureId);
     return this.responseService.success("Période d'essai démarrée", data);
   }
 
   @Post('souscrire')
   async souscrire(@Body() dto: SouscrireAbonnementDto, @Req() req: Request) {
+    await this.assertAuMoinsUnPointDeVente(dto.structureId);
     const isSuperAdmin = (req as any).user?.is_super_admin === true;
     const data = await this.abonnementService.souscrire(dto, isSuperAdmin);
     const message = isSuperAdmin
       ? 'Souscription enregistrée et activée'
       : 'Demande de souscription envoyée — en attente de validation par le super administrateur';
     return this.responseService.success(message, data);
+  }
+
+  /** Une structure sans point de vente (boutique/restaurant) ne peut pas être abonnée — l'entrepôt seul ne suffit pas. */
+  private async assertAuMoinsUnPointDeVente(structureId: number): Promise<void> {
+    const ds = await this.tenantService.getDataSource(structureId);
+    const nbPointsDeVente = await ds.getRepository(Boutique).count({
+      where: [
+        { type: 'boutique' as any },
+        { type: 'restaurant' as any },
+      ],
+    });
+    if (nbPointsDeVente === 0) {
+      throw new BadRequestException(
+        "Cette structure n'a aucun point de vente (boutique/restaurant) configuré. Créez-en au moins un avant de souscrire un abonnement.",
+      );
+    }
   }
 
   @Patch(':id/valider')

@@ -65,8 +65,11 @@ export class BoutiqueService {
       });
       const saved = await repo.save(data) as any;
 
-      // Notifier l'abonnement si c'est une boutique commerciale supplémentaire (plan payant garanti ici)
-      if (structureId && isUnitéCommerciale && nbExistantes >= 1) {
+      if (structureId && isUnitéCommerciale && nbExistantes === 0) {
+        // Premier point de vente commercial de la structure → démarre l'essai gratuit.
+        await this.abonnementService.demarrerEssai(structureId).catch(() => null);
+      } else if (structureId && isUnitéCommerciale && nbExistantes >= 1) {
+        // Notifier l'abonnement si c'est une boutique commerciale supplémentaire (plan payant garanti ici)
         await this.abonnementService.notifierAjoutBoutique(structureId, saved.id, saved.nom).catch(() => null);
       }
 

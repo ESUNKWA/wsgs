@@ -6,7 +6,6 @@ import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { TenantConfig } from './entities/tenant-config.entity';
 import { CreateTenantDto } from './dto/create-tenant.dto';
-import { AbonnementService } from 'src/abonnement/abonnement.service';
 
 import { Boutique } from 'src/gestion-boutiques/boutique/entities/boutique.entity';
 import { Produit } from 'src/config/produit/entities/produit.entity';
@@ -82,7 +81,6 @@ export class TenantService {
     private readonly configRepo: Repository<TenantConfig>,
     @InjectDataSource()
     private readonly masterDs: DataSource,
-    private readonly abonnementService: AbonnementService,
   ) {}
 
   // ─── Accès DataSource tenant (utilisé par le middleware et les services) ────
@@ -399,6 +397,19 @@ export class TenantService {
       );
     }
 
+    // Vérifie en amont que le téléphone de l'admin n'est pas déjà pris (évite un
+    // échec de contrainte unique en pleine transaction, après création de la base).
+    if (dto.adminTelephone) {
+      const telephoneDejaUtilise = await this.masterDs
+        .getRepository(Utilisateur)
+        .findOne({ where: { telephone: dto.adminTelephone } });
+      if (telephoneDejaUtilise) {
+        throw new BadRequestException(
+          `Le numéro de téléphone "${dto.adminTelephone}" est déjà utilisé par un autre utilisateur. Choisissez-en un autre pour l'admin.`,
+        );
+      }
+    }
+
     // ── Étape 1 : création physique de la base (DDL — hors transaction) ───────
     await this.createDatabaseIfNotExists(dto);
 
@@ -460,6 +471,13 @@ export class TenantService {
     } catch (masterError: any) {
       // Schéma créé mais aucune donnée insérée → on détruit la connexion proprement
       if (tenantDs.isInitialized) await tenantDs.destroy();
+      // Violation de contrainte unique Postgres : le message "detail" indique précisément
+      // la colonne et la valeur en conflit (ex: "Key (r_telephone)=(...) already exists.")
+      if (masterError.code === '23505') {
+        throw new BadRequestException(
+          `Conflit de données lors de la création : ${masterError.detail || masterError.message}`,
+        );
+      }
       throw new InternalServerErrorException(`Échec de la transaction master : ${masterError.message}`);
     }
 
@@ -502,12 +520,9 @@ export class TenantService {
     // ── Étape 6 : enregistrer le DataSource dans le pool ─────────────────────
     this.pool.set(dto.structureId, tenantDs);
 
-    // ── Étape 7 : démarrer automatiquement la période d'essai ────────────────
-    try {
-      await this.abonnementService.demarrerEssai(dto.structureId);
-    } catch {
-      // Ne pas bloquer le provisionnement si l'essai échoue (ex: déjà existant)
-    }
+    // La période d'essai démarre à la création du premier point de vente (voir
+    // BoutiqueService.create), pas ici : juste après provisionnement, la structure
+    // n'a encore aucune boutique/restaurant.
 
     delete (adminUser as any)?.mot_de_passe;
     return { config: savedConfig, admin: adminUser };
