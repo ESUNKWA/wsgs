@@ -1,11 +1,8 @@
 import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-const ECRANS = [
-  'dashboard', 'pos', 'ekwatech',
-  'restaurant-admin', 'restaurant-serveur', 'restaurant-caissier', 'restaurant-cuisine',
-] as const;
+const ECRANS = ['dashboard', 'pos', 'ekwatech'] as const;
 
-export type EcranCible = typeof ECRANS[number];
+export type EcranCible = (typeof ECRANS)[number];
 
 export class UpsertConfigurationEcranDto {
   @IsOptional()

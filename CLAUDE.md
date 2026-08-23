@@ -42,6 +42,13 @@ JWT_SECRET=<secret>
 JWT_TOKEN_EXPIRE=1h
 BASE_URL=http://localhost:3000
 ADMIN_PASSWORD=<password>
+
+# Super admin auto-créé au démarrage (voir AppService.seedSuperAdmin)
+SUPER_ADMIN_NOM=<nom>
+SUPER_ADMIN_PRENOMS=<prenoms>
+SUPER_ADMIN_TELEPHONE=<telephone>
+SUPER_ADMIN_EMAIL=<email>
+SUPER_ADMIN_PASSWORD=<password>
 ```
 
 The app also requires a local **Ollama** instance at `http://localhost:11434` with the `llama3` model pulled for AI analysis features to work.

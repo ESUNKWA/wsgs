@@ -1,33 +1,33 @@
-import { IsNotEmpty, IsOptional } from "class-validator";
+import { IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateBoutiqueDto {
-    @IsNotEmpty({message: 'Veuillez saisir le nom de la boutique'})
-    nom: string;
+  @IsNotEmpty({ message: 'Veuillez saisir le nom de la boutique' })
+  nom: string;
 
-    @IsOptional()
-    telephone: string;
+  @IsOptional()
+  telephone: string;
 
-    @IsOptional()
-    email: string;
+  @IsOptional()
+  email: string;
 
-    @IsOptional()
-    rccm: string;
+  @IsOptional()
+  rccm: string;
 
-    @IsOptional()
-    situation_geo: string;
+  @IsOptional()
+  situation_geo: string;
 
-    @IsOptional()
-    logo: string;
+  @IsOptional()
+  logo: string;
 
-    @IsNotEmpty({message: 'Veuillez sélectionner la structure'})
-    structure: number;
+  @IsNotEmpty({ message: 'Veuillez sélectionner la structure' })
+  structure: number;
 
-    @IsOptional()
-    gestion_caisse_activee: boolean;
+  @IsOptional()
+  gestion_caisse_activee: boolean;
 
-    @IsOptional()
-    type: 'boutique' | 'restaurant' | 'entrepot' | 'departement';
+  @IsOptional()
+  type: 'boutique' | 'entrepot' | 'departement';
 
-    @IsOptional()
-    modes_paiement: string[];
+  @IsOptional()
+  modes_paiement: string[];
 }

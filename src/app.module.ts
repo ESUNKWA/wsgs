@@ -26,7 +26,7 @@ import { CommandeClientModule } from './gestion-ventes/commande-client/commande-
 import { SessionCaisseModule } from './gestion-caisse/session-caisse.module';
 import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard'
+import { JwtAuthGuard } from './gestion-utilisateurs/authentication/auth/jwt-auth.guard';
 import { PdfModule } from './documents/pdf/pdf.module';
 import { TenantModule } from './tenant/tenant.module';
 import { TenantMiddleware } from './tenant/tenant.middleware';
@@ -51,11 +51,6 @@ import { InscriptionModule } from './inscription/inscription.module';
 import { DemandeInscription } from './inscription/entities/demande-inscription.entity';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SmsModule } from './sms/sms.module';
-import { TableRestaurantModule } from './gestion-restaurant/table/table.module';
-import { RecetteModule } from './gestion-restaurant/recette/recette.module';
-import { CommandeTableModule } from './gestion-restaurant/commande-table/commande-table.module';
-import { MenuJourModule } from './gestion-restaurant/menu-jour/menu-jour.module';
-import { PublicMenuModule } from './gestion-restaurant/public-menu/public-menu.module';
 import { SmsLog } from './sms/entities/sms-log.entity';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { WhatsappLog } from './whatsapp/entities/whatsapp-log.entity';
@@ -73,7 +68,7 @@ import { ConfigurationEcranModule } from './configuration-ecran/configuration-ec
       serveRoot: '/', // Cette URL sera utilisée pour accéder aux fichiers
     }),
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -82,10 +77,27 @@ import { ConfigurationEcranModule } from './configuration-ecran/configuration-ec
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [Utilisateur, Profil, Structure, TenantConfig, Abonnement, PlanTarif, BoutiqueAbonnement, ConfigTarif, FraisSetup, CategorieStructure, PlanTarifCategorie, DemandeInscription, SmsLog, WhatsappLog, ModuleStructure, ConfigurationEcran],
+      entities: [
+        Utilisateur,
+        Profil,
+        Structure,
+        TenantConfig,
+        Abonnement,
+        PlanTarif,
+        BoutiqueAbonnement,
+        ConfigTarif,
+        FraisSetup,
+        CategorieStructure,
+        PlanTarifCategorie,
+        DemandeInscription,
+        SmsLog,
+        WhatsappLog,
+        ModuleStructure,
+        ConfigurationEcran,
+      ],
       synchronize: true,
     }),
-    ConfigModule.forRoot(), 
+    ConfigModule.forRoot(),
     ProduitModule,
     CategorieModule,
     FournisseurModule,
@@ -116,11 +128,6 @@ import { ConfigurationEcranModule } from './configuration-ecran/configuration-ec
     ScheduleModule.forRoot(),
     SmsModule,
     WhatsappModule,
-    TableRestaurantModule,
-    RecetteModule,
-    CommandeTableModule,
-    MenuJourModule,
-    PublicMenuModule,
     TransfertStockModule,
     BonSortieModule,
     ModuleStructureModule,

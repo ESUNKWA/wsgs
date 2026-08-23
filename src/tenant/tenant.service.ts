@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -31,45 +36,59 @@ import { Utilisateur } from 'src/gestion-utilisateurs/utilisateurs/entities/util
 import { Profil } from 'src/gestion-utilisateurs/profils/entities/profil.entity';
 import { RetourVente } from 'src/gestion-ventes/retour-vente/entities/retour-vente.entity';
 import { DetailRetourVente } from 'src/gestion-ventes/retour-vente/entities/detail-retour-vente.entity';
-import { TableRestaurant } from 'src/gestion-restaurant/table/entities/table.entity';
-import { Recette } from 'src/gestion-restaurant/recette/entities/recette.entity';
-import { CompositionRecette } from 'src/gestion-restaurant/recette/entities/composition-recette.entity';
-import { CommandeTable } from 'src/gestion-restaurant/commande-table/entities/commande-table.entity';
-import { LigneCommandeTable } from 'src/gestion-restaurant/commande-table/entities/ligne-commande-table.entity';
-import { MenuJour } from 'src/gestion-restaurant/menu-jour/entities/menu-jour.entity';
 import { TransfertStock } from 'src/gestion-achats/transfert-stock/entities/transfert-stock.entity';
 import { LigneTransfertStock } from 'src/gestion-achats/transfert-stock/entities/ligne-transfert-stock.entity';
 import { BonSortie } from 'src/gestion-achats/bon-sortie/entities/bon-sortie.entity';
 import { LigneBonSortie } from 'src/gestion-achats/bon-sortie/entities/ligne-bon-sortie.entity';
 
 const PROFILS_SEED = [
-  { code: 'admin',                 nom: 'administrateur',        description: 'administrateur' },
-  { code: 'gerant',                nom: 'Gérant boutique',       description: 'Gérant boutiques' },
-  { code: 'responsable_structure', nom: 'Responsable structure', description: 'Responsable structure' },
-  { code: 'user',                  nom: 'Utilisateurs standard', description: 'Utilisateurs standard' },
-  { code: 'super_admin',           nom: 'Super admin',           description: 'Super admin' },
-  { code: 'magasinier',            nom: 'Magasinier',            description: 'Magasinier' },
-  { code: 'caissier',              nom: 'Caissier',              description: 'Caissier' },
-  { code: 'vendeur',               nom: 'Vendeur',               description: 'Vendeur — accès POS vente' },
-  { code: 'serveur',               nom: 'Serveur',               description: 'Serveur restaurant — layout mobile' },
-  { code: 'cuisiner',              nom: 'Cuisinier',             description: 'Cuisinier restaurant — layout mobile' },
+  { code: 'admin', nom: 'administrateur', description: 'administrateur' },
+  { code: 'gerant', nom: 'Gérant boutique', description: 'Gérant boutiques' },
+  {
+    code: 'responsable_structure',
+    nom: 'Responsable structure',
+    description: 'Responsable structure',
+  },
+  {
+    code: 'user',
+    nom: 'Utilisateurs standard',
+    description: 'Utilisateurs standard',
+  },
+  { code: 'super_admin', nom: 'Super admin', description: 'Super admin' },
+  { code: 'magasinier', nom: 'Magasinier', description: 'Magasinier' },
+  { code: 'caissier', nom: 'Caissier', description: 'Caissier' },
+  { code: 'vendeur', nom: 'Vendeur', description: 'Vendeur — accès POS vente' },
 ];
 
 export const TENANT_ENTITIES = [
-  Boutique, Produit, Categorie, Fournisseur,
-  Achat, DetailAchat,
-  Vente, DetailVente, Client,
+  Boutique,
+  Produit,
+  Categorie,
+  Fournisseur,
+  Achat,
+  DetailAchat,
+  Vente,
+  DetailVente,
+  Client,
   HistoriqueStock,
-  Devis, DetailDevis,
-  CommandeFournisseur, DetailCommandeFournisseur,
-  CommandeClient, DetailCommandeClient,
-  SessionCaisse, MouvementCaisse, Caisse,
-  Structure, Utilisateur, Profil,
-  RetourVente, DetailRetourVente,
-  TableRestaurant, Recette, CompositionRecette, CommandeTable, LigneCommandeTable,
-  MenuJour,
-  TransfertStock, LigneTransfertStock,
-  BonSortie, LigneBonSortie,
+  Devis,
+  DetailDevis,
+  CommandeFournisseur,
+  DetailCommandeFournisseur,
+  CommandeClient,
+  DetailCommandeClient,
+  SessionCaisse,
+  MouvementCaisse,
+  Caisse,
+  Structure,
+  Utilisateur,
+  Profil,
+  RetourVente,
+  DetailRetourVente,
+  TransfertStock,
+  LigneTransfertStock,
+  BonSortie,
+  LigneBonSortie,
 ];
 
 @Injectable()
@@ -115,89 +134,28 @@ export class TenantService {
     return ds;
   }
 
-
   // ─── Migrations incrémentales ───────────────────────────────────────────────
   // Chaque instruction est idempotente : elle échoue silencieusement si inutile.
 
   private async applyMigrations(ds: DataSource): Promise<void> {
-    const run = (sql: string) => ds.query(sql).catch(() => { /* already applied */ });
-    await run(`ALTER TABLE t_produits ALTER COLUMN r_nom TYPE character varying(255)`);
+    const run = (sql: string) =>
+      ds.query(sql).catch(() => {
+        /* already applied */
+      });
+    await run(
+      `ALTER TABLE t_produits ALTER COLUMN r_nom TYPE character varying(255)`,
+    );
 
-    // Module restaurant — création des tables si absentes
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_tables_restaurant (
-        id SERIAL PRIMARY KEY,
-        r_numero VARCHAR(20) NOT NULL,
-        r_nom VARCHAR(100),
-        r_capacite INTEGER DEFAULT 4,
-        r_statut VARCHAR(20) DEFAULT 'libre',
-        "boutiqueId" INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        deleted_at TIMESTAMP
-      )`);
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_recettes (
-        id SERIAL PRIMARY KEY,
-        r_nom VARCHAR(150) NOT NULL,
-        r_description TEXT,
-        r_categorie VARCHAR(100),
-        r_prix_vente REAL DEFAULT 0,
-        r_actif BOOLEAN DEFAULT TRUE,
-        "boutiqueId" INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        deleted_at TIMESTAMP
-      )`);
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_compositions_recettes (
-        id SERIAL PRIMARY KEY,
-        r_quantite REAL DEFAULT 1,
-        "recetteId" INTEGER REFERENCES t_recettes(id) ON DELETE CASCADE,
-        "produitId" INTEGER
-      )`);
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_commandes_table (
-        id SERIAL PRIMARY KEY,
-        r_reference VARCHAR(30) UNIQUE NOT NULL,
-        r_statut VARCHAR(20) DEFAULT 'en_cours',
-        r_montant_total REAL DEFAULT 0,
-        r_notes TEXT,
-        "tableId" INTEGER,
-        "boutiqueId" INTEGER,
-        "userId" INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        deleted_at TIMESTAMP
-      )`);
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_lignes_commande_table (
-        id SERIAL PRIMARY KEY,
-        r_quantite INTEGER DEFAULT 1,
-        r_prix_unitaire REAL NOT NULL,
-        r_note VARCHAR(255),
-        "recetteId" INTEGER,
-        "commandeId" INTEGER REFERENCES t_commandes_table(id) ON DELETE CASCADE
-      )`);
-    // Enum en_attente + nouvelles colonnes commande
-    await run(`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_enum
-          WHERE enumlabel = 'en_attente'
-            AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 't_commandes_table_r_statut_enum')
-        ) THEN
-          ALTER TYPE t_commandes_table_r_statut_enum ADD VALUE 'en_attente' BEFORE 'en_cours';
-        END IF;
-      END $$`);
-    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_telephone VARCHAR(30)`);
-    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_source VARCHAR(10) DEFAULT 'staff'`);
-    await run(`ALTER TABLE t_commandes_table ADD COLUMN IF NOT EXISTS r_numero_ordre INTEGER`);
-    await run(`ALTER TABLE t_tables_restaurant ADD COLUMN IF NOT EXISTS r_appel_serveur BOOLEAN DEFAULT FALSE`);
-    await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`);
+    await run(
+      `ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_type VARCHAR(20) DEFAULT 'boutique'`,
+    );
     await run(`ALTER TABLE t_boutiques ALTER COLUMN r_telephone DROP NOT NULL`);
-    await run(`ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_modes_paiement JSONB DEFAULT '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]'`);
-    await run(`UPDATE t_boutiques SET r_modes_paiement = '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]' WHERE r_modes_paiement IS NULL`);
+    await run(
+      `ALTER TABLE t_boutiques ADD COLUMN IF NOT EXISTS r_modes_paiement JSONB DEFAULT '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]'`,
+    );
+    await run(
+      `UPDATE t_boutiques SET r_modes_paiement = '["espece","orange_money","wave","mtn_money","moov_money","dajmo","carte","credit","mixte"]' WHERE r_modes_paiement IS NULL`,
+    );
 
     // Sync profils — upsert all seed profils so existing tenants get new roles
     for (const p of PROFILS_SEED) {
@@ -207,23 +165,6 @@ export class TenantService {
          ON CONFLICT ("r_code") DO NOTHING`,
       );
     }
-
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_menus_jour (
-        id SERIAL PRIMARY KEY,
-        r_date DATE NOT NULL,
-        "boutiqueId" INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        deleted_at TIMESTAMP,
-        UNIQUE (r_date, "boutiqueId")
-      )`);
-    await run(`
-      CREATE TABLE IF NOT EXISTS t_menu_jour_recettes (
-        menu_id INTEGER NOT NULL REFERENCES t_menus_jour(id) ON DELETE CASCADE,
-        recette_id INTEGER NOT NULL REFERENCES t_recettes(id) ON DELETE CASCADE,
-        PRIMARY KEY (menu_id, recette_id)
-      )`);
 
     // Module transfert de stock entrepôt → boutiques
     await run(`
@@ -250,12 +191,18 @@ export class TenantService {
       )`);
 
     // Colonne r_transfert_id sur l'historique de stock (traçabilité transferts)
-    await run(`ALTER TABLE t_historique_stock ADD COLUMN IF NOT EXISTS r_transfert_id INTEGER`);
+    await run(
+      `ALTER TABLE t_historique_stock ADD COLUMN IF NOT EXISTS r_transfert_id INTEGER`,
+    );
 
     // Changement de mot de passe obligatoire à la première connexion
-    await run(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS r_must_change_password BOOLEAN DEFAULT TRUE`);
+    await run(
+      `ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS r_must_change_password BOOLEAN DEFAULT TRUE`,
+    );
     // Tous les comptes existants avant la migration sont forcés au changement
-    await run(`UPDATE utilisateurs SET r_must_change_password = TRUE WHERE r_must_change_password IS NULL`);
+    await run(
+      `UPDATE utilisateurs SET r_must_change_password = TRUE WHERE r_must_change_password IS NULL`,
+    );
 
     // Module bons de sortie interne (fournitures → départements)
     await run(`
@@ -279,7 +226,9 @@ export class TenantService {
       )`);
 
     // Convertir r_source de enum → varchar pour accepter la valeur 'transfert'
-    await run(`ALTER TABLE t_historique_stock ALTER COLUMN r_source TYPE VARCHAR(20) USING r_source::text`);
+    await run(
+      `ALTER TABLE t_historique_stock ALTER COLUMN r_source TYPE VARCHAR(20) USING r_source::text`,
+    );
 
     // Module caisses physiques
     await run(`
@@ -295,10 +244,14 @@ export class TenantService {
         updated_at TIMESTAMP DEFAULT NOW(),
         deleted_at TIMESTAMP
       )`);
-    await run(`ALTER TABLE t_sessions_caisse ADD COLUMN IF NOT EXISTS "caisseId" INTEGER REFERENCES t_caisses(id) ON DELETE SET NULL`);
+    await run(
+      `ALTER TABLE t_sessions_caisse ADD COLUMN IF NOT EXISTS "caisseId" INTEGER REFERENCES t_caisses(id) ON DELETE SET NULL`,
+    );
 
     // Vendeur réel sur la vente (peut différer du caissier connecté)
-    await run(`ALTER TABLE t_ventes ADD COLUMN IF NOT EXISTS "vendeurId" INTEGER REFERENCES utilisateurs(id)`);
+    await run(
+      `ALTER TABLE t_ventes ADD COLUMN IF NOT EXISTS "vendeurId" INTEGER REFERENCES utilisateurs(id)`,
+    );
 
     // Backfill boutiqueId NULL sur les fournisseurs existants → première boutique du tenant
     await run(`
@@ -309,28 +262,52 @@ export class TenantService {
     `);
 
     // Lien produit → fournisseur (filtrage des produits par fournisseur à l'approvisionnement)
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS "fournisseurId" INTEGER REFERENCES t_fournisseurs(id)`);
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS "fournisseurId" INTEGER REFERENCES t_fournisseurs(id)`,
+    );
 
     // Conditionnement d'approvisionnement (carton, casier…) — conversion vers l'unité de détail
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_unite_conditionnement VARCHAR(20)`);
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_quantite_par_conditionnement REAL`);
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_unite_conditionnement VARCHAR(20)`,
+    );
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_quantite_par_conditionnement REAL`,
+    );
 
     // Le contact fournisseur n'est plus obligatoire
-    await run(`ALTER TABLE t_fournisseurs ALTER COLUMN r_contact DROP NOT NULL`);
+    await run(
+      `ALTER TABLE t_fournisseurs ALTER COLUMN r_contact DROP NOT NULL`,
+    );
 
     // Traçabilité du mode de saisie (unité / carton) sur chaque ligne d'achat
-    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`);
-    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`);
-    await run(`ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_prix_colis REAL`);
+    await run(
+      `ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`,
+    );
+    await run(
+      `ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`,
+    );
+    await run(
+      `ALTER TABLE t_detail_achats ADD COLUMN IF NOT EXISTS r_prix_colis REAL`,
+    );
 
     // Idem pour les lignes de transfert de stock entrepôt → boutiques (pas de prix ici)
-    await run(`ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`);
-    await run(`ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`);
+    await run(
+      `ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_mode_saisie VARCHAR(10) DEFAULT 'unite'`,
+    );
+    await run(
+      `ALTER TABLE t_lignes_transfert_stock ADD COLUMN IF NOT EXISTS r_quantite_colis REAL`,
+    );
 
     // Promotion temporaire sur le prix de vente (une seule période active par produit)
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_prix_promo REAL`);
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_debut DATE`);
-    await run(`ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_fin DATE`);
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_prix_promo REAL`,
+    );
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_debut DATE`,
+    );
+    await run(
+      `ALTER TABLE t_produits ADD COLUMN IF NOT EXISTS r_promo_date_fin DATE`,
+    );
 
     // Migrer la contrainte unique globale sur r_nom → unique composite (r_nom, boutiqueId)
     // afin de permettre le même nom de catégorie dans différentes boutiques.
@@ -382,15 +359,23 @@ export class TenantService {
 
   // ─── Provisionnement ────────────────────────────────────────────────────────
 
-  async provision(dto: CreateTenantDto): Promise<{ config: TenantConfig; admin?: Utilisateur }> {
-    const existing = await this.configRepo.findOne({ where: { structureId: dto.structureId } });
+  async provision(
+    dto: CreateTenantDto,
+  ): Promise<{ config: TenantConfig; admin?: Utilisateur }> {
+    const existing = await this.configRepo.findOne({
+      where: { structureId: dto.structureId },
+    });
     if (existing) {
-      throw new BadRequestException(`Une configuration DB existe déjà pour la structure ${dto.structureId}`);
+      throw new BadRequestException(
+        `Une configuration DB existe déjà pour la structure ${dto.structureId}`,
+      );
     }
 
     // Empêche deux structures de pointer vers la même base (fuite de données entre tenants)
     // si le nom saisi correspond déjà à une base assignée à une autre structure.
-    const databaseDejaAssignee = await this.configRepo.findOne({ where: { database: dto.database } });
+    const databaseDejaAssignee = await this.configRepo.findOne({
+      where: { database: dto.database },
+    });
     if (databaseDejaAssignee) {
       throw new BadRequestException(
         `Le nom de base "${dto.database}" est déjà utilisé par la structure ${databaseDejaAssignee.structureId}. Choisissez un autre nom.`,
@@ -446,9 +431,12 @@ export class TenantService {
 
         // 4b. Créer l'utilisateur admin si les champs sont fournis
         if (dto.adminNom && dto.adminTelephone) {
-          const adminProfil = await masterTx.findOne(Profil, { where: { code: 'responsable_structure' } });
+          const adminProfil = await masterTx.findOne(Profil, {
+            where: { code: 'responsable_structure' },
+          });
           if (adminProfil) {
-            const rawPwd = dto.adminPassword || process.env.ADMIN_PASSWORD || '12345';
+            const rawPwd =
+              dto.adminPassword || process.env.ADMIN_PASSWORD || '12345';
             const hash = await bcrypt.hash(rawPwd, 10);
 
             const newUser = masterTx.create(Utilisateur, {
@@ -461,10 +449,14 @@ export class TenantService {
               structure_id: dto.structureId,
               must_change_password: true,
             } as any);
-            adminUser = (await masterTx.save(Utilisateur, newUser)) as Utilisateur;
+            adminUser = await masterTx.save(Utilisateur, newUser);
 
             // 4c. Lier l'admin comme responsable de la structure
-            await masterTx.update(Structure, { id: dto.structureId }, { responsable: adminUser });
+            await masterTx.update(
+              Structure,
+              { id: dto.structureId },
+              { responsable: adminUser },
+            );
           }
         }
       });
@@ -478,7 +470,9 @@ export class TenantService {
           `Conflit de données lors de la création : ${masterError.detail || masterError.message}`,
         );
       }
-      throw new InternalServerErrorException(`Échec de la transaction master : ${masterError.message}`);
+      throw new InternalServerErrorException(
+        `Échec de la transaction master : ${masterError.message}`,
+      );
     }
 
     // ── Étape 5 : transaction tenant (seed profils + sync admin) ───────────
@@ -495,16 +489,30 @@ export class TenantService {
       }
 
       if (adminUser) {
-        const { structure: _s, vente: _v, achat: _a, boutique: _bu, profil: masterProfil, ...userFlat } = adminUser as any;
+        const {
+          structure: _s,
+          vente: _v,
+          achat: _a,
+          boutique: _bu,
+          profil: masterProfil,
+          ...userFlat
+        } = adminUser as any;
 
         let tenantProfilId: number | null = null;
         if (masterProfil?.code) {
-          const tenantProfil = await tenantDs.getRepository(Profil).findOne({ where: { code: masterProfil.code } });
+          const tenantProfil = await tenantDs
+            .getRepository(Profil)
+            .findOne({ where: { code: masterProfil.code } });
           tenantProfilId = tenantProfil?.id ?? null;
         }
 
         await tenantDs.getRepository(Utilisateur).upsert(
-          [{ ...userFlat, profil: tenantProfilId ? { id: tenantProfilId } : null }],
+          [
+            {
+              ...userFlat,
+              profil: tenantProfilId ? { id: tenantProfilId } : null,
+            },
+          ],
           ['id'],
         );
       }
@@ -514,7 +522,9 @@ export class TenantService {
         await rollbackTx.delete(TenantConfig, savedConfig.id);
       });
       if (tenantDs.isInitialized) await tenantDs.destroy();
-      throw new InternalServerErrorException(`Échec de la transaction tenant (rollback master effectué) : ${tenantError.message}`);
+      throw new InternalServerErrorException(
+        `Échec de la transaction tenant (rollback master effectué) : ${tenantError.message}`,
+      );
     }
 
     // ── Étape 6 : enregistrer le DataSource dans le pool ─────────────────────
@@ -522,7 +532,7 @@ export class TenantService {
 
     // La période d'essai démarre à la création du premier point de vente (voir
     // BoutiqueService.create), pas ici : juste après provisionnement, la structure
-    // n'a encore aucune boutique/restaurant.
+    // n'a encore aucune boutique.
 
     delete (adminUser as any)?.mot_de_passe;
     return { config: savedConfig, admin: adminUser };
@@ -537,7 +547,9 @@ export class TenantService {
     const qr = tenantDs.createQueryRunner();
     await qr.connect();
     try {
-      await qr.query(`ALTER TYPE t_historique_stock_r_source_enum ADD VALUE IF NOT EXISTS 'retour'`);
+      await qr.query(
+        `ALTER TYPE t_historique_stock_r_source_enum ADD VALUE IF NOT EXISTS 'retour'`,
+      );
     } catch {
       // L'enum n'existe pas encore → synchronize() la créera avec toutes ses valeurs
     } finally {
@@ -547,18 +559,29 @@ export class TenantService {
     await tenantDs.synchronize();
   }
 
-  async runSqlOnAllTenants(sql: string[]): Promise<{ structureId: number; database: string; status: string }[]> {
+  async runSqlOnAllTenants(
+    sql: string[],
+  ): Promise<{ structureId: number; database: string; status: string }[]> {
     const configs = await this.configRepo.find({ where: { isActive: true } });
-    const results: { structureId: number; database: string; status: string }[] = [];
+    const results: { structureId: number; database: string; status: string }[] =
+      [];
     for (const config of configs) {
       try {
         const ds = await this.getDataSource(config.structureId);
         for (const query of sql) {
           await ds.query(query);
         }
-        results.push({ structureId: config.structureId, database: config.database, status: 'ok' });
+        results.push({
+          structureId: config.structureId,
+          database: config.database,
+          status: 'ok',
+        });
       } catch (e: any) {
-        results.push({ structureId: config.structureId, database: config.database, status: `erreur: ${e.message}` });
+        results.push({
+          structureId: config.structureId,
+          database: config.database,
+          status: `erreur: ${e.message}`,
+        });
       }
     }
     return results;
@@ -572,7 +595,10 @@ export class TenantService {
         await this.reseedTenant(config.structureId);
         results.push({ structureId: config.structureId, status: 'ok' });
       } catch (e: any) {
-        results.push({ structureId: config.structureId, status: `erreur: ${e.message}` });
+        results.push({
+          structureId: config.structureId,
+          status: `erreur: ${e.message}`,
+        });
       }
     }
     return results;
@@ -589,9 +615,11 @@ export class TenantService {
   /** Liste toutes les DBs tenant enrichies avec les infos de la structure (master DB).
    *  Le mot de passe DB est masqué dans la réponse. */
   async findAllWithStructure(): Promise<any[]> {
-    const configs = await this.configRepo.find({ order: { structureId: 'ASC' } });
+    const configs = await this.configRepo.find({
+      order: { structureId: 'ASC' },
+    });
     const structures = await this.masterDs.getRepository(Structure).find();
-    const structureMap = new Map(structures.map(s => [s.id, s]));
+    const structureMap = new Map(structures.map((s) => [s.id, s]));
 
     return configs.map(({ password: _pwd, ...config }) => ({
       ...config,
@@ -608,7 +636,7 @@ export class TenantService {
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
        ORDER BY table_name`,
     );
-    return rows.map(r => r.table_name);
+    return rows.map((r) => r.table_name);
   }
 
   /** Retourne le contenu paginé d'une table tenant.
@@ -621,14 +649,19 @@ export class TenantService {
   ): Promise<any> {
     const validTables = await this.getTables(structureId);
     if (!validTables.includes(tableName)) {
-      throw new NotFoundException(`Table '${tableName}' introuvable dans cette base`);
+      throw new NotFoundException(
+        `Table '${tableName}' introuvable dans cette base`,
+      );
     }
 
     const ds = await this.getDataSource(structureId);
     const offset = (page - 1) * limit;
 
     const [rows, countResult] = await Promise.all([
-      ds.query(`SELECT * FROM "${tableName}" ORDER BY id DESC LIMIT $1 OFFSET $2`, [limit, offset]),
+      ds.query(
+        `SELECT * FROM "${tableName}" ORDER BY id DESC LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
       ds.query(`SELECT COUNT(*)::int AS total FROM "${tableName}"`),
     ]);
 
@@ -659,13 +692,20 @@ export class TenantService {
    * configuration. Action irréversible — le nom exact de la base doit être fourni
    * en confirmation pour éviter toute suppression accidentelle.
    */
-  async deleteTenantDatabase(structureId: number, confirmDatabase: string): Promise<void> {
+  async deleteTenantDatabase(
+    structureId: number,
+    confirmDatabase: string,
+  ): Promise<void> {
     const config = await this.configRepo.findOne({ where: { structureId } });
     if (!config) {
-      throw new NotFoundException(`Aucune configuration DB pour la structure ${structureId}`);
+      throw new NotFoundException(
+        `Aucune configuration DB pour la structure ${structureId}`,
+      );
     }
     if (confirmDatabase !== config.database) {
-      throw new BadRequestException('Le nom de la base saisi ne correspond pas — suppression annulée.');
+      throw new BadRequestException(
+        'Le nom de la base saisi ne correspond pas — suppression annulée.',
+      );
     }
 
     // Fermer le pool applicatif vers ce tenant avant de toucher à la base physique.
@@ -694,7 +734,15 @@ export class TenantService {
     await this.configRepo.delete({ structureId });
   }
 
-  async getStorageStats(): Promise<{ structureId: number; database: string; base_de_donnees: string; fichiers: Record<string, string>; total_fichiers: string }[]> {
+  async getStorageStats(): Promise<
+    {
+      structureId: number;
+      database: string;
+      base_de_donnees: string;
+      fichiers: Record<string, string>;
+      total_fichiers: string;
+    }[]
+  > {
     const configs = await this.configRepo.find({ where: { isActive: true } });
     const tenantsRoot = path.join(process.cwd(), 'public', 'tenants');
 
@@ -715,7 +763,13 @@ export class TenantService {
       return total;
     };
 
-    const results: { structureId: number; database: string; base_de_donnees: string; fichiers: Record<string, string>; total_fichiers: string }[] = [];
+    const results: {
+      structureId: number;
+      database: string;
+      base_de_donnees: string;
+      fichiers: Record<string, string>;
+      total_fichiers: string;
+    }[] = [];
     for (const config of configs) {
       // Taille des fichiers par dossier
       const tenantDir = path.join(tenantsRoot, String(config.structureId));
@@ -732,9 +786,13 @@ export class TenantService {
       let base_de_donnees = 'N/A';
       try {
         const ds = await this.getDataSource(config.structureId);
-        const [row] = await ds.query(`SELECT pg_size_pretty(pg_database_size(current_database())) AS taille`);
+        const [row] = await ds.query(
+          `SELECT pg_size_pretty(pg_database_size(current_database())) AS taille`,
+        );
         base_de_donnees = row?.taille ?? 'N/A';
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       results.push({
         structureId: config.structureId,
@@ -758,7 +816,10 @@ export class TenantService {
     });
     try {
       await adminDs.initialize();
-      const result = await adminDs.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dto.database]);
+      const result = await adminDs.query(
+        `SELECT 1 FROM pg_database WHERE datname = $1`,
+        [dto.database],
+      );
       if (!result.length) {
         await adminDs.query(`CREATE DATABASE "${dto.database}"`);
       }

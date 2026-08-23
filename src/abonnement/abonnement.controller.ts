@@ -1,4 +1,15 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AbonnementService } from './abonnement.service';
 import { SouscrireAbonnementDto } from './dto/souscrire-abonnement.dto';
@@ -27,8 +38,14 @@ export class AbonnementController {
   }
 
   @Post('plans')
-  async upsertPlan(@Body() body: { plan: PlanType; montant: number; devise?: string }) {
-    const data = await this.abonnementService.upsertPlan(body.plan, body.montant, body.devise);
+  async upsertPlan(
+    @Body() body: { plan: PlanType; montant: number; devise?: string },
+  ) {
+    const data = await this.abonnementService.upsertPlan(
+      body.plan,
+      body.montant,
+      body.devise,
+    );
     return this.responseService.success('Plan mis à jour', data);
   }
 
@@ -45,7 +62,8 @@ export class AbonnementController {
   @Get('mon-abonnement')
   async getMonAbonnement(@Req() req: Request) {
     const structureId = (req as any).user?.structureId;
-    if (!structureId) return this.responseService.success('Aucune structure associée', null);
+    if (!structureId)
+      return this.responseService.success('Aucune structure associée', null);
     const data = await this.abonnementService.getAbonnement(structureId);
     return this.responseService.success('Abonnement', data);
   }
@@ -70,18 +88,17 @@ export class AbonnementController {
     return this.responseService.success(message, data);
   }
 
-  /** Une structure sans point de vente (boutique/restaurant) ne peut pas être abonnée — l'entrepôt seul ne suffit pas. */
-  private async assertAuMoinsUnPointDeVente(structureId: number): Promise<void> {
+  /** Une structure sans boutique ne peut pas être abonnée — l'entrepôt seul ne suffit pas. */
+  private async assertAuMoinsUnPointDeVente(
+    structureId: number,
+  ): Promise<void> {
     const ds = await this.tenantService.getDataSource(structureId);
     const nbPointsDeVente = await ds.getRepository(Boutique).count({
-      where: [
-        { type: 'boutique' as any },
-        { type: 'restaurant' as any },
-      ],
+      where: { type: 'boutique' as any },
     });
     if (nbPointsDeVente === 0) {
       throw new BadRequestException(
-        "Cette structure n'a aucun point de vente (boutique/restaurant) configuré. Créez-en au moins un avant de souscrire un abonnement.",
+        "Cette structure n'a aucune boutique configurée. Créez-en une avant de souscrire un abonnement.",
       );
     }
   }
@@ -89,7 +106,8 @@ export class AbonnementController {
   @Patch(':id/valider')
   async valider(
     @Param('id') id: string,
-    @Body() body?: { remise_type?: 'montant' | 'pourcentage'; remise_valeur?: number },
+    @Body()
+    body?: { remise_type?: 'montant' | 'pourcentage'; remise_valeur?: number },
   ) {
     const data = await this.abonnementService.validerAbonnement(+id, body);
     return this.responseService.success('Abonnement validé et activé', data);
@@ -122,7 +140,11 @@ export class AbonnementController {
     @Req() req: Request,
   ) {
     const isSuperAdmin = (req as any).user?.is_super_admin === true;
-    const data = await this.abonnementService.calculerDevisRenouvellement(+structureId, plan as any, isSuperAdmin);
+    const data = await this.abonnementService.calculerDevisRenouvellement(
+      +structureId,
+      plan as any,
+      isSuperAdmin,
+    );
     return this.responseService.success('Devis de renouvellement', data);
   }
 
@@ -130,7 +152,8 @@ export class AbonnementController {
 
   @Get(':structureId/boutiques')
   async getBoutiquesFacturees(@Param('structureId') structureId: string) {
-    const data = await this.abonnementService.getBoutiquesFacturees(+structureId);
+    const data =
+      await this.abonnementService.getBoutiquesFacturees(+structureId);
     return this.responseService.success('Boutiques facturées', data);
   }
 
@@ -139,8 +162,15 @@ export class AbonnementController {
     @Param('structureId') structureId: string,
     @Param('boutiqueId') boutiqueId: string,
   ) {
-    const data = await this.abonnementService.toggleBoutiqueFacturation(+structureId, +boutiqueId, false);
-    return this.responseService.success('Boutique désactivée de la facturation', data);
+    const data = await this.abonnementService.toggleBoutiqueFacturation(
+      +structureId,
+      +boutiqueId,
+      false,
+    );
+    return this.responseService.success(
+      'Boutique désactivée de la facturation',
+      data,
+    );
   }
 
   @Patch(':structureId/boutiques/:boutiqueId/activer')
@@ -148,8 +178,15 @@ export class AbonnementController {
     @Param('structureId') structureId: string,
     @Param('boutiqueId') boutiqueId: string,
   ) {
-    const data = await this.abonnementService.toggleBoutiqueFacturation(+structureId, +boutiqueId, true);
-    return this.responseService.success('Boutique réactivée dans la facturation', data);
+    const data = await this.abonnementService.toggleBoutiqueFacturation(
+      +structureId,
+      +boutiqueId,
+      true,
+    );
+    return this.responseService.success(
+      'Boutique réactivée dans la facturation',
+      data,
+    );
   }
 
   @Patch(':structureId/boutiques/:boutiqueId/retirer')
@@ -157,23 +194,33 @@ export class AbonnementController {
     @Param('structureId') structureId: string,
     @Param('boutiqueId') boutiqueId: string,
   ) {
-    const data = await this.abonnementService.retirerBoutique(+structureId, +boutiqueId);
-    return this.responseService.success('Boutique retirée de la facturation', data);
+    const data = await this.abonnementService.retirerBoutique(
+      +structureId,
+      +boutiqueId,
+    );
+    return this.responseService.success(
+      'Boutique retirée de la facturation',
+      data,
+    );
   }
 
   @Post(':structureId/boutiques/sync')
   async syncBoutiques(@Param('structureId') structureId: string) {
     const ds = await this.tenantService.getDataSource(+structureId);
-    // Seules les unités commerciales (boutique/restaurant) sont facturables —
+    // Seules les unités commerciales (boutiques) sont facturables —
     // un entrepôt (ou département) n'est pas une boutique supplémentaire.
     const boutiques = await ds.getRepository(Boutique).find({
-      where: [
-        { structure_id: +structureId, is_active: true, type: 'boutique' as any },
-        { structure_id: +structureId, is_active: true, type: 'restaurant' as any },
-      ],
+      where: {
+        structure_id: +structureId,
+        is_active: true,
+        type: 'boutique' as any,
+      },
       order: { id: 'ASC' },
     });
-    const data = await this.abonnementService.syncBoutiquesExistantes(+structureId, boutiques);
+    const data = await this.abonnementService.syncBoutiquesExistantes(
+      +structureId,
+      boutiques,
+    );
     return this.responseService.success('Synchronisation effectuée', data);
   }
 
@@ -190,10 +237,10 @@ export class AbonnementController {
     @Param('abonnementId') abonnementId: string,
     @Res() res: Response,
   ) {
-    const facture  = await this.abonnementService.getFacture(+abonnementId);
-    const html     = this.abonnementService.buildFactureHtml(facture);
+    const facture = await this.abonnementService.getFacture(+abonnementId);
+    const html = this.abonnementService.buildFactureHtml(facture);
     const fileName = `facture-${facture.reference}.pdf`;
-    const buffer   = await this.pdfService.generatePdfBuffer(html);
+    const buffer = await this.pdfService.generatePdfBuffer(html);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -206,13 +253,16 @@ export class AbonnementController {
     @Param('abonnementId') abonnementId: string,
     @Res() res: Response,
   ) {
-    const facture  = await this.abonnementService.getFacture(+abonnementId);
-    const html     = this.abonnementService.buildContratHtml(facture);
-    const contratRef = `CTR-${String(facture.structure.id).padStart(4,'0')}-${String(facture.abonnement.id).padStart(6,'0')}`;
-    const buffer   = await this.pdfService.generatePdfBuffer(html);
+    const facture = await this.abonnementService.getFacture(+abonnementId);
+    const html = this.abonnementService.buildContratHtml(facture);
+    const contratRef = `CTR-${String(facture.structure.id).padStart(4, '0')}-${String(facture.abonnement.id).padStart(6, '0')}`;
+    const buffer = await this.pdfService.generatePdfBuffer(html);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="contrat-${contratRef}.pdf"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="contrat-${contratRef}.pdf"`,
+    );
     res.setHeader('Content-Length', buffer.length);
     res.end(buffer);
   }
@@ -227,7 +277,13 @@ export class AbonnementController {
 
   @Post('config/frais-setup')
   async createFraisSetup(
-    @Body() body: { label: string; montant: number; devise?: string; ordre?: number },
+    @Body()
+    body: {
+      label: string;
+      montant: number;
+      devise?: string;
+      ordre?: number;
+    },
   ) {
     const data = await this.abonnementService.upsertFraisSetup(null, body);
     return this.responseService.success('Frais créé', data);
@@ -236,9 +292,19 @@ export class AbonnementController {
   @Patch('config/frais-setup/:id')
   async updateFraisSetup(
     @Param('id') id: string,
-    @Body() body: { label?: string; montant?: number; devise?: string; est_actif?: boolean; ordre?: number },
+    @Body()
+    body: {
+      label?: string;
+      montant?: number;
+      devise?: string;
+      est_actif?: boolean;
+      ordre?: number;
+    },
   ) {
-    const data = await this.abonnementService.upsertFraisSetup(+id, body as any);
+    const data = await this.abonnementService.upsertFraisSetup(
+      +id,
+      body as any,
+    );
     return this.responseService.success('Frais mis à jour', data);
   }
 
@@ -267,7 +333,13 @@ export class AbonnementController {
   @Patch('config/categories/:id')
   async updateCategorie(
     @Param('id') id: string,
-    @Body() body: { label?: string; description?: string; est_actif?: boolean; ordre?: number },
+    @Body()
+    body: {
+      label?: string;
+      description?: string;
+      est_actif?: boolean;
+      ordre?: number;
+    },
   ) {
     const data = await this.abonnementService.upsertCategorie(+id, body as any);
     return this.responseService.success('Catégorie mise à jour', data);
@@ -290,7 +362,12 @@ export class AbonnementController {
     @Param('id') id: string,
     @Body() body: { plan: string; montant: number; devise?: string },
   ) {
-    const data = await this.abonnementService.upsertTarifCategorie(+id, body.plan as any, body.montant, body.devise);
+    const data = await this.abonnementService.upsertTarifCategorie(
+      +id,
+      body.plan as any,
+      body.montant,
+      body.devise,
+    );
     return this.responseService.success('Tarif enregistré', data);
   }
 
@@ -308,7 +385,10 @@ export class AbonnementController {
   @Get('config/prix-boutique')
   async getConfigBoutiqueSupplementaire() {
     const data = await this.abonnementService.getConfigBoutiqueSupplementaire();
-    return this.responseService.success('Configuration boutique supplémentaire', data);
+    return this.responseService.success(
+      'Configuration boutique supplémentaire',
+      data,
+    );
   }
 
   @Post('config/prix-boutique')

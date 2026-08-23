@@ -7,7 +7,6 @@ export type ModuleCode =
   | 'retours_produits'
   | 'caisse'
   | 'ia'
-  | 'restauration'
   | 'clients'
   | 'fournisseurs'
   | 'prix_achat_optionnel';
@@ -19,7 +18,6 @@ export const ALL_MODULES: ModuleCode[] = [
   'retours_produits',
   'caisse',
   'ia',
-  'restauration',
   'clients',
   'fournisseurs',
   'prix_achat_optionnel',
