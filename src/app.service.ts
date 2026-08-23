@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigurationEcran } from './configuration-ecran/entities/configuration-ecran.entity';
 import { Utilisateur } from './gestion-utilisateurs/utilisateurs/entities/utilisateur.entity';
 import { Profil } from './gestion-utilisateurs/profils/entities/profil.entity';
+import { ModuleStructureService } from './modules/module-structure.service';
 
 const PROFILS_SEED = [
   { code: 'admin', nom: 'Administrateur', description: 'Administrateur' },
@@ -29,7 +30,10 @@ const PROFILS_SEED = [
 export class AppService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AppService.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly moduleStructureService: ModuleStructureService,
+  ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     for (const p of PROFILS_SEED) {
@@ -43,6 +47,7 @@ export class AppService implements OnApplicationBootstrap {
     this.logger.log(`Seed profils — ${PROFILS_SEED.length} profils vérifiés.`);
     await this.seedSuperAdmin();
     await this.seedConfigurationsEcran();
+    await this.seedPrixAchatOptionnel();
 
     // Migration master DB : tous les utilisateurs existants doivent changer leur mot de passe
     // sauf le super_admin (is_admin = true)
@@ -213,6 +218,26 @@ export class AppService implements OnApplicationBootstrap {
 
     this.logger.log(
       `Seed configurations_ecran — ${defaults.length} entrées vérifiées.`,
+    );
+  }
+
+  /**
+   * Le prix d'achat n'est pas obligatoire à l'approvisionnement par défaut, pour
+   * toutes les structures (existantes et futures — cf. initForStructure()). Idempotent :
+   * ré-active le module à chaque démarrage même s'il avait été désactivé manuellement
+   * entre-temps, conformément à la valeur par défaut voulue pour tout le monde.
+   */
+  private async seedPrixAchatOptionnel(): Promise<void> {
+    const structures: Array<{ id: number }> = await this.dataSource.query(
+      `SELECT id FROM t_structures`,
+    );
+    for (const s of structures) {
+      await this.moduleStructureService.updateModules(s.id, [
+        { module: 'prix_achat_optionnel', est_actif: true },
+      ]);
+    }
+    this.logger.log(
+      `Seed module prix_achat_optionnel — activé pour ${structures.length} structure(s).`,
     );
   }
 

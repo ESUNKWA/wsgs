@@ -40,12 +40,17 @@ export class ModuleStructureService {
     return this.findByStructure(structureId);
   }
 
-  /** Initialise les lignes manquantes pour une structure (tous modules à false) */
+  /**
+   * Initialise les lignes manquantes pour une structure. Tous les modules démarrent
+   * désactivés, sauf 'prix_achat_optionnel' qui est actif par défaut (le prix d'achat
+   * n'est pas obligatoire à l'approvisionnement, sauf désactivation explicite).
+   */
   async initForStructure(structureId: number): Promise<void> {
     for (const code of ALL_MODULES) {
       const exists = await this.repo.findOne({ where: { structureId, module: code } });
       if (!exists) {
-        await this.repo.save(this.repo.create({ structureId, module: code, est_actif: false }));
+        const est_actif = code === 'prix_achat_optionnel';
+        await this.repo.save(this.repo.create({ structureId, module: code, est_actif }));
       }
     }
   }

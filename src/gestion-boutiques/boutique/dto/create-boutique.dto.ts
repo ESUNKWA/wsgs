@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateBoutiqueDto {
   @IsNotEmpty({ message: 'Veuillez saisir le nom de la boutique' })
@@ -26,6 +26,7 @@ export class CreateBoutiqueDto {
   gestion_caisse_activee: boolean;
 
   @IsOptional()
+  @IsIn(['boutique', 'entrepot', 'departement'])
   type: 'boutique' | 'entrepot' | 'departement';
 
   @IsOptional()
