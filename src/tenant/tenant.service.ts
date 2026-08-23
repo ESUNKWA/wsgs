@@ -359,6 +359,27 @@ export class TenantService {
 
   // ─── Provisionnement ────────────────────────────────────────────────────────
 
+  /**
+   * Connexion Postgres utilisée pour provisionner un tenant : hôte, port et identifiants
+   * proviennent exclusivement du .env backend — jamais du frontend, qui ne les reçoit ni
+   * ne les transmet. Seul le nom de la base reste choisi via l'interface.
+   */
+  private resolveTenantDbConfig(database: string): {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    database: string;
+  } {
+    return {
+      host: process.env.DATABASE_HOST || 'localhost',
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: process.env.DATABASE_USERNAME || 'postgres',
+      password: process.env.DATABASE_PASSWORD || '',
+      database,
+    };
+  }
+
   async provision(
     dto: CreateTenantDto,
   ): Promise<{ config: TenantConfig; admin?: Utilisateur }> {
@@ -371,14 +392,16 @@ export class TenantService {
       );
     }
 
+    const dbConfig = this.resolveTenantDbConfig(dto.database);
+
     // Empêche deux structures de pointer vers la même base (fuite de données entre tenants)
     // si le nom saisi correspond déjà à une base assignée à une autre structure.
     const databaseDejaAssignee = await this.configRepo.findOne({
-      where: { database: dto.database },
+      where: { database: dbConfig.database },
     });
     if (databaseDejaAssignee) {
       throw new BadRequestException(
-        `Le nom de base "${dto.database}" est déjà utilisé par la structure ${databaseDejaAssignee.structureId}. Choisissez un autre nom.`,
+        `Le nom de base "${dbConfig.database}" est déjà utilisé par la structure ${databaseDejaAssignee.structureId}. Choisissez un autre nom.`,
       );
     }
 
@@ -396,16 +419,16 @@ export class TenantService {
     }
 
     // ── Étape 1 : création physique de la base (DDL — hors transaction) ───────
-    await this.createDatabaseIfNotExists(dto);
+    await this.createDatabaseIfNotExists(dbConfig);
 
     // ── Étape 2 : initialisation + synchronisation du schéma tenant ───────────
     const tenantDs = new DataSource({
       type: 'postgres',
-      host: dto.host ?? 'localhost',
-      port: dto.port ?? 5432,
-      username: dto.username,
-      password: dto.password,
-      database: dto.database,
+      host: dbConfig.host,
+      port: dbConfig.port,
+      username: dbConfig.username,
+      password: dbConfig.password,
+      database: dbConfig.database,
       entities: TENANT_ENTITIES,
       synchronize: false,
     });
@@ -421,11 +444,11 @@ export class TenantService {
         // 4a. Sauvegarder la config tenant
         const config = masterTx.create(TenantConfig, {
           structureId: dto.structureId,
-          host: dto.host ?? 'localhost',
-          port: dto.port ?? 5432,
-          username: dto.username,
-          password: dto.password,
-          database: dto.database,
+          host: dbConfig.host,
+          port: dbConfig.port,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          database: dbConfig.database,
         });
         savedConfig = await masterTx.save(TenantConfig, config);
 
@@ -805,23 +828,29 @@ export class TenantService {
     return results;
   }
 
-  private async createDatabaseIfNotExists(dto: CreateTenantDto): Promise<void> {
+  private async createDatabaseIfNotExists(dbConfig: {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    database: string;
+  }): Promise<void> {
     const adminDs = new DataSource({
       type: 'postgres',
-      host: dto.host ?? 'localhost',
-      port: dto.port ?? 5432,
-      username: dto.username,
-      password: dto.password,
+      host: dbConfig.host,
+      port: dbConfig.port,
+      username: dbConfig.username,
+      password: dbConfig.password,
       database: 'postgres',
     });
     try {
       await adminDs.initialize();
       const result = await adminDs.query(
         `SELECT 1 FROM pg_database WHERE datname = $1`,
-        [dto.database],
+        [dbConfig.database],
       );
       if (!result.length) {
-        await adminDs.query(`CREATE DATABASE "${dto.database}"`);
+        await adminDs.query(`CREATE DATABASE "${dbConfig.database}"`);
       }
     } finally {
       if (adminDs.isInitialized) await adminDs.destroy();

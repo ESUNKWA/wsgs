@@ -1,25 +1,15 @@
 import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
+/**
+ * Les paramètres de connexion à la base (hôte, port, identifiants) sont résolus
+ * exclusivement côté serveur (cf. TenantService.resolveTenantDbConfig), à partir du
+ * .env backend — jamais saisis ni transmis par le frontend. Seul le nom de la base
+ * tenant reste choisi via l'interface.
+ */
 export class CreateTenantDto {
   @IsInt()
   @Min(1)
   structureId: number;
-
-  @IsString()
-  @IsOptional()
-  host?: string;
-
-  @IsInt()
-  @IsOptional()
-  port?: number;
-
-  @IsString()
-  @IsNotEmpty()
-  username: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string;
 
   @IsString()
   @IsNotEmpty()

@@ -1,18 +1,8 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
+/** Hôte/port/identifiants viennent du .env backend — seul le nom de la base est saisi. */
 export class ValiderInscriptionDto {
-  @IsString() @IsNotEmpty()
-  username: string;
-
-  @IsString() @IsNotEmpty()
-  password: string;
-
-  @IsString() @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   database: string;
-
-  @IsString() @IsOptional()
-  host?: string;
-
-  @IsInt() @IsOptional()
-  port?: number;
 }

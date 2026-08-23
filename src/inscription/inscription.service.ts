@@ -114,10 +114,6 @@ export class InscriptionService {
     try {
       await this.tenantService.provision({
         structureId:    structure.id,
-        host:           dbDto.host,
-        port:           dbDto.port,
-        username:       dbDto.username,
-        password:       dbDto.password,
         database:       dbDto.database,
         adminNom:       demande.responsable_nom,
         adminPrenoms:   demande.responsable_prenoms ?? undefined,

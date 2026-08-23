@@ -27,7 +27,8 @@ export class InscriptionController {
     return this.inscriptionService.findOne(+id);
   }
 
-  /** Valider et tout créer — super_admin */
+  /** Valider et tout créer — super_admin. Hôte/port/identifiants proviennent du .env
+   *  backend (cf. TenantService) ; seul le nom de la base tenant est saisi ici. */
   @Post(':id/valider')
   valider(@Param('id') id: string, @Body() dbDto: ValiderInscriptionDto) {
     return this.inscriptionService.valider(+id, dbDto);
