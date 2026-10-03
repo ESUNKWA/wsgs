@@ -8,7 +8,7 @@ import { TenantContextService } from 'src/tenant/tenant-context.service';
 import { buildTenantFilePath } from 'src/common/helpers/tenant-file.helper';
 import { BarcodeHelper } from 'src/common/helpers/barcode.helper';
 import { PdfService } from 'src/documents/pdf/pdf.service';
-import { IsNull } from 'typeorm';
+import { ILike, In, IsNull } from 'typeorm';
 import * as XLSX from 'xlsx';
 
 @Injectable()
@@ -59,7 +59,15 @@ export class ProduitService {
     }
   }
 
-  async findAll(query: { boutique?: number; fournisseur?: number; page?: number; limit?: number }) {
+  async findAll(query: {
+    boutique?: number;
+    fournisseur?: number;
+    page?: number;
+    limit?: number;
+    search?: string;
+    categorie?: number;
+    ids?: string;
+  }) {
     try {
       const { fournisseur } = query;
       const boutiqueId = Number(query.boutique);
@@ -67,15 +75,61 @@ export class ProduitService {
       if (!hasBoutique && !fournisseur) {
         throw new BadRequestException('Veuillez préciser la boutique ou le fournisseur');
       }
-      const page = Number(query.page) || 1;
-      const limit = Number(query.limit) || 50;
+
+      const page = Math.max(1, Number(query.page) || 1);
+      // Plafonné pour éviter qu'un appel malveillant/mal formé ne force une requête trop lourde.
+      const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
       const skip = (page - 1) * limit;
 
+      const baseWhere = {
+        ...(hasBoutique ? { boutique: { id: boutiqueId } } : {}),
+        ...(fournisseur ? { fournisseur: { id: +fournisseur } } : {}),
+      };
+
+      // Récupération ciblée par ids (ex : synchronisation du stock des lignes déjà
+      // affichées/au panier), toujours restreinte au périmètre boutique/fournisseur ci-dessus.
+      if (query.ids) {
+        const ids = query.ids
+          .split(',')
+          .map((v) => Number(v.trim()))
+          .filter((n) => Number.isInteger(n) && n > 0)
+          .slice(0, 200); // borne défensive
+
+        if (ids.length === 0) {
+          return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 };
+        }
+
+        const produits = await this.produitRepository.find({
+          where: { ...baseWhere, id: In(ids) },
+          order: { nom: 'ASC' },
+        });
+
+        const items = produits.map((produit) => ({
+          ...this.withPrixEffectif(produit),
+          imageUrl: produit.image ? `${String(process.env.BASE_URL)}/${produit.image}` : null,
+        }));
+
+        return { items, total: items.length, page: 1, limit: items.length, totalPages: 1 };
+      }
+
+      const categorieId = Number(query.categorie);
+      const hasCategorie = Number.isInteger(categorieId) && categorieId > 0;
+
+      // Recherche texte : trim + plafond de longueur ; les caractères spéciaux ILIKE
+      // (% _) sont échappés pour qu'ils soient traités comme du texte littéral.
+      const search = (query.search ?? '').trim().slice(0, 100);
+      const hasSearch = search.length > 0;
+      const escapedSearch = search.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+      const where = hasSearch
+        ? [
+            { ...baseWhere, ...(hasCategorie ? { categorie: { id: categorieId } } : {}), nom: ILike(`%${escapedSearch}%`) },
+            { ...baseWhere, ...(hasCategorie ? { categorie: { id: categorieId } } : {}), code_barre: ILike(`%${escapedSearch}%`) },
+          ]
+        : { ...baseWhere, ...(hasCategorie ? { categorie: { id: categorieId } } : {}) };
+
       const [produits, total] = await this.produitRepository.findAndCount({
-        where: {
-          ...(hasBoutique ? { boutique: { id: boutiqueId } } : {}),
-          ...(fournisseur ? { fournisseur: { id: +fournisseur } } : {}),
-        },
+        where,
         order: { nom: 'ASC' },
         skip,
         take: limit,
