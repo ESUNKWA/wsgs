@@ -20,7 +20,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
 
   app.enableCors({
-    origin: ['https://neurostock.ekwatech.com','http://r0ink59x39llhf02xfeuor5p.38.242.232.151.sslip.io/'],
+    origin: ["*"],
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-structure-id'],
