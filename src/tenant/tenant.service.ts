@@ -117,13 +117,12 @@ export class TenantService {
       );
     }
 
+    // Hôte/port/identifiants toujours issus du .env : les valeurs stockées dans
+    // tenant_configs peuvent être obsolètes (ex. 'localhost' hors conteneur).
+    const conn = this.resolveTenantDbConfig(config.database);
     const ds = new DataSource({
       type: 'postgres',
-      host: config.host,
-      port: config.port,
-      username: config.username,
-      password: config.password,
-      database: config.database,
+      ...conn,
       entities: TENANT_ENTITIES,
       synchronize: false,
     });
@@ -736,11 +735,7 @@ export class TenantService {
 
     const adminDs = new DataSource({
       type: 'postgres',
-      host: config.host ?? 'localhost',
-      port: config.port ?? 5432,
-      username: config.username,
-      password: config.password,
-      database: 'postgres',
+      ...this.resolveTenantDbConfig('postgres'),
     });
     try {
       await adminDs.initialize();
