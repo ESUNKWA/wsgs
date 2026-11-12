@@ -1,5 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { escapeHtml as e, infosPaiementRecu, urlImageSure } from './recu-paiement.helper';
+
+/** Lignes "Paiement / Montant reçu / Monnaie rendue" du tableau des totaux (vide pour un devis). */
+function lignesPaiement(data: any): string {
+  const paiement = infosPaiementRecu(data);
+  if (!paiement) return '';
+  const fmt = (n: number) => Number(n || 0).toLocaleString('fr-FR');
+  let html = `<tr><td class="sub-label">Mode de paiement</td><td class="sub-value">${paiement.mode}</td></tr>`;
+  if (paiement.montantRecu !== null) {
+    html += `<tr><td class="sub-label">Montant reçu</td><td class="sub-value">${fmt(paiement.montantRecu)} FCFA</td></tr>`;
+    html += `<tr><td class="sub-label">Monnaie rendue</td><td class="sub-value">${fmt(paiement.monnaieRendue ?? 0)} FCFA</td></tr>`;
+  }
+  return html;
+}
 
 export function generateHtml(data: any, documentType = 'FACTURE'): string {
   const templatePath = 'src/templates/facture.html';
@@ -7,8 +21,8 @@ export function generateHtml(data: any, documentType = 'FACTURE'): string {
 
   const lignes = data?.detail_vente?.map((p: { produit: any; quantite: number; prix: number }) => `
     <tr>
-      <td>${p.produit}</td>
-      <td>${p.quantite}</td>
+      <td>${e(p.produit)}</td>
+      <td>${e(p.quantite)}</td>
       <td>${Number(p.prix).toLocaleString('fr-FR')}</td>
       <td>${(p.quantite * p.prix).toLocaleString('fr-FR')}</td>
     </tr>
@@ -26,21 +40,30 @@ export function generateHtml(data: any, documentType = 'FACTURE'): string {
     return `${day}-${month}-${year} à ${hours}:${minutes}:${seconds}`;
   };
 
-  return template
-    .replace(/{{document_type}}/g, documentType)
-    .replace(/{{client_nom}}/g, data?.nom_client || '-')
-    .replace(/{{client_telephone}}/g, data?.telephone_client || '-')
-    .replace(/{{nom_boutique}}/g, data?.nom_boutique || '')
-    .replace(/{{logo_boutique}}/g, data?.logo_boutique || '')
-    .replace(/{{adresse_boutique}}/g, data?.adresse_boutique || '')
-    .replace(/{{phone_boutique}}/g, data?.phone_boutique || '')
-    .replace(/{{email_boutique}}/g, data?.email_boutique || '')
-    .replace(/{{reference}}/g, data?.reference || '')
-    .replace(/{{statut}}/g, data?.statut || '')
-    .replace(/{{date}}/g, formatDate(data?.date_vente))
-    .replace(/{{lignes}}/g, lignes || '')
-    .replace(/{{total}}/g, Number(data?.montant_total || 0).toLocaleString('fr-FR'))
-    .replace(/{{remise}}/g, Number(data?.remise || 0).toLocaleString('fr-FR'))
-    .replace(/{{net_a_payer}}/g, Number(data?.montant_total_apres_remise || data?.montant_total || 0).toLocaleString('fr-FR'));
+  // Sécurité : toutes les données sont échappées (le HTML est aussi rendu dans le navigateur),
+  // et le remplacement se fait en une seule passe : une valeur contenant "{{…}}" n'est jamais
+  // réinterprétée, et les motifs spéciaux de String.replace ($&, $1…) ne s'appliquent pas.
+  const valeurs: Record<string, string> = {
+    document_type: e(documentType),
+    client_nom: e(data?.nom_client || '-'),
+    client_telephone: e(data?.telephone_client || '-'),
+    nom_boutique: e(data?.nom_boutique || ''),
+    logo_boutique: urlImageSure(data?.logo_boutique),
+    adresse_boutique: e(data?.adresse_boutique || ''),
+    phone_boutique: e(data?.phone_boutique || ''),
+    email_boutique: e(data?.email_boutique || ''),
+    reference: e(data?.reference || ''),
+    statut: e(data?.statut || ''),
+    date: e(formatDate(data?.date_vente)),
+    lignes: lignes || '', // déjà construit avec des valeurs échappées
+    total: Number(data?.montant_total || 0).toLocaleString('fr-FR'),
+    remise: Number(data?.remise || 0).toLocaleString('fr-FR'),
+    net_a_payer: Number(data?.montant_total_apres_remise || data?.montant_total || 0).toLocaleString('fr-FR'),
+    paiement: documentType === 'DEVIS' ? '' : lignesPaiement(data),
+  };
+
+  return template.replace(/{{(\w+)}}/g, (motif: string, cle: string) =>
+    Object.prototype.hasOwnProperty.call(valeurs, cle) ? valeurs[cle] : motif,
+  );
 }
 

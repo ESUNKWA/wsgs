@@ -10,6 +10,7 @@ import { BarcodeHelper } from 'src/common/helpers/barcode.helper';
 import { PdfService } from 'src/documents/pdf/pdf.service';
 import { ILike, In, IsNull } from 'typeorm';
 import * as XLSX from 'xlsx';
+import { resoudreUniteMesure } from './import-produit.helper';
 
 @Injectable()
 export class ProduitService {
@@ -314,6 +315,7 @@ export class ProduitService {
     boutiqueId: number,
     defaultCategorieId?: number,
     fournisseurIdsParLigne?: (number | null)[],
+    unitesParLigne?: (string | null)[],
   ): Promise<{ created: number; skipped: number; errors: string[] }> {
     if (!boutiqueId || isNaN(boutiqueId)) {
       throw new BadRequestException('Veuillez préciser la boutique');
@@ -390,6 +392,17 @@ export class ProduitService {
         }
       }
 
+      // Unité choisie dans l'aperçu (liste autorisée), sinon colonne du fichier, sinon « pièce ».
+      const uniteResolue = resoudreUniteMesure(
+        unitesParLigne?.[i],
+        row['unite_mesure'] ?? row['Unité'],
+      );
+      if ('erreur' in uniteResolue) {
+        errors.push(`Ligne ${i + 2} (${nom}) : ${uniteResolue.erreur}`);
+        skipped++;
+        continue;
+      }
+
       const stockInitial = parseFloat(row['stock_initial'] ?? row['Stock initial'] ?? 0) || 0;
 
       try {
@@ -401,7 +414,7 @@ export class ProduitService {
         entity.stock_disponible = stockInitial;
         entity.stock_minimum    = parseFloat(row['stock_minimum'] ?? row['Stock minimum'] ?? 0) || 0;
         entity.seuil_alert      = parseInt(row['seuil_alert'] ?? row['Seuil alerte'] ?? 2) || 2;
-        entity.unite_mesure     = String(row['unite_mesure'] ?? row['Unité'] ?? 'pièce').trim() || 'pièce';
+        entity.unite_mesure     = uniteResolue.unite;
         const codeBarre = String(row['code_barre'] ?? row['Code barre'] ?? '').trim();
         (entity as any).code_barre = codeBarre || BarcodeHelper.generateEan13(structureId ?? 0);
         (entity as any).description = String(row['description'] ?? row['Description'] ?? '').trim() || null;

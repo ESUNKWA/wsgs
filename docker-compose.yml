@@ -1,0 +1,46 @@
+# API NeuroStock (NestJS) + PostgreSQL — autonome, indépendant du front.
+#   cp .env.example .env   (puis renseigner les secrets)
+#   docker compose up -d --build
+# API : http://localhost:3000   Swagger : http://localhost:3000/swagger
+name: neurostock-api
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_DB:-neurostock}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"    # accès depuis un client SQL local (DBeaver, psql...)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: runtime
+    image: neurostock-api:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_PORT: 3000
+      DATABASE_HOST: db            # nom du service Postgres dans ce réseau
+      DATABASE_PORT: 5432
+    volumes:
+      - uploads:/app/public        # logos, images produits, PDF générés
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
+  uploads:

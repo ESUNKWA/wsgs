@@ -8,6 +8,7 @@ import { ResponseService } from 'src/services/response/response.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { tenantMulterOptions } from 'src/common/helpers/tenant-file.helper';
 import { importMulterOptions } from 'src/common/helpers/import-multer.config';
+import { parseListeParLigne, toIdPositif, toUniteMesureAutorisee } from './import-produit.helper';
 
 
 @Controller('produit')
@@ -103,21 +104,19 @@ export class ProduitController {
     @Query('boutique') boutique: string,
     @Query('categorie') categorie?: string,
     @Body('fournisseurs') fournisseursJson?: string,
+    @Body('unites') unitesJson?: string,
   ): Promise<DataRequest> {
-    let fournisseurIdsParLigne: (number | null)[] | undefined;
-    if (fournisseursJson) {
-      try {
-        fournisseurIdsParLigne = JSON.parse(fournisseursJson);
-      } catch {
-        fournisseurIdsParLigne = undefined;
-      }
-    }
+    // Choix faits ligne par ligne dans l'aperçu : chaque valeur est validée
+    // (id entier positif / unité de la liste autorisée), sinon ignorée.
+    const fournisseurIdsParLigne = parseListeParLigne(fournisseursJson, toIdPositif);
+    const unitesParLigne = parseListeParLigne(unitesJson, toUniteMesureAutorisee);
 
     const result = await this.produitService.importFromFile(
       file,
       +boutique,
       categorie ? +categorie : undefined,
       fournisseurIdsParLigne,
+      unitesParLigne,
     );
     return this.responseService.success(
       `Import terminé : ${result.created} créé(s), ${result.skipped} ignoré(s)`,

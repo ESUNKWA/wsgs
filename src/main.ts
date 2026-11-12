@@ -6,6 +6,7 @@ import { join } from 'path';
 import * as dotenv from 'dotenv';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { corsOrigins } from './common/helpers/cors-origins';
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
 
   app.enableCors({
-    origin: ['https://neurostock.ekwatech.com','http://r0ink59x39llhf02xfeuor5p.38.242.232.151.sslip.io'],
+    origin: corsOrigins(),
     methods: ['GET', 'HEAD', 'PUT', 'PATCH','POST','DELETE','OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-structure-id'],

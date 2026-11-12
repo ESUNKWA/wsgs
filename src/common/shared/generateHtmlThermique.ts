@@ -1,3 +1,7 @@
+import { escapeHtml as e, infosPaiementRecu, urlImageSure } from './recu-paiement.helper';
+
+// Sécurité : toute donnée issue de la vente (produits, client, boutique…) est échappée,
+// car ce HTML est rendu dans le navigateur (iframe du POS) avec les droits de l'application.
 export function generateHtmlThermique(data: any, documentType = 'FACTURE'): string {
   const formatDate = (dateVal: any) => {
     if (!dateVal) return '-';
@@ -13,8 +17,8 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
       const total = p.quantite * p.prix;
       return `
         <tr>
-          <td class="col-produit">${p.produit}</td>
-          <td class="col-qte">${p.quantite}</td>
+          <td class="col-produit">${e(p.produit)}</td>
+          <td class="col-qte">${e(p.quantite)}</td>
           <td class="col-pu">${fmt(p.prix)}</td>
           <td class="col-tot">${fmt(total)}</td>
         </tr>`;
@@ -32,13 +36,26 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
     ? `<tr class="net-row"><td colspan="3">NET A PAYER</td><td class="col-tot">${fmt(net)} F</td></tr>`
     : '';
 
+  // Mode de paiement, montant reçu et monnaie rendue (absent pour les anciennes ventes sans mode)
+  const paiement = infosPaiementRecu(data);
+  const paiementBloc = paiement
+    ? `
+  <div class="sep-dash"></div>
+  <div class="info-line"><span>Mode de paiement:</span><span>${paiement.mode}</span></div>
+  ${paiement.montantRecu !== null ? `<div class="info-line"><span>Montant reçu:</span><span>${fmt(paiement.montantRecu)} F</span></div>
+  <div class="info-line"><span>Monnaie rendue:</span><span>${fmt(paiement.monnaieRendue ?? 0)} F</span></div>` : ''}`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { margin: 0; size: 72mm auto; }
+    /* Hauteur : fixée à la hauteur exacte du ticket au moment de l'impression (POS front).
+       ("size: 72mm auto" était invalide et ignoré → le navigateur prenait le format du pilote,
+       ex. 279/297 mm, d'où un grand blanc reporté en tête du ticket suivant.) */
+    @page { margin: 0; }
     @font-face {
       font-family: 'ThermalFont';
       /* DejaVu Mono en premier : installé sur Linux, couvre tous les caractères français */
@@ -48,9 +65,11 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
       font-family: 'ThermalFont', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', Arial, sans-serif;
       font-size: 14px;
       width: 72mm;
-      padding: 2mm 3mm 35mm 3mm; /* 35mm en bas pour laisser avancer le papier avant la lame */
       color: #000;
     }
+    /* Marges uniquement sur body (appliquées aussi à html, elles étaient doublées : 70 mm en bas).
+       10 mm en bas : avance du papier pour que la coupe/déchirure ne touche pas le dernier texte. */
+    body { padding: 2mm 3mm 10mm 3mm; }
     .center { text-align: center; }
     .bold { font-weight: bold; }
     .large { font-size: 16px; }
@@ -80,22 +99,22 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
 </head>
 <body>
 
-  ${data?.logo_boutique ? `<img class="boutique-logo" src="${data.logo_boutique}" alt="Logo">` : ''}
-  <div class="center bold large">${data?.nom_boutique || ''}</div>
-  ${data?.adresse_boutique ? `<div class="center small">${data.adresse_boutique}</div>` : ''}
-  ${data?.phone_boutique ? `<div class="center small">Tél: ${data.phone_boutique}</div>` : ''}
-  ${data?.email_boutique ? `<div class="center small">${data.email_boutique}</div>` : ''}
+  ${urlImageSure(data?.logo_boutique) ? `<img class="boutique-logo" src="${urlImageSure(data.logo_boutique)}" alt="Logo">` : ''}
+  <div class="center bold large">${e(data?.nom_boutique || '')}</div>
+  ${data?.adresse_boutique ? `<div class="center small">${e(data.adresse_boutique)}</div>` : ''}
+  ${data?.phone_boutique ? `<div class="center small">Tél: ${e(data.phone_boutique)}</div>` : ''}
+  ${data?.email_boutique ? `<div class="center small">${e(data.email_boutique)}</div>` : ''}
 
   <div class="sep-solid"></div>
 
-  <div class="center bold large">${documentType}</div>
+  <div class="center bold large">${e(documentType)}</div>
 
   <div class="sep-dash"></div>
 
-  <div class="info-line"><span>Ref:</span><span>${data?.reference || '-'}</span></div>
-  <div class="info-line"><span>Date:</span><span>${formatDate(data?.date_vente)}</span></div>
-  <div class="info-line"><span>Client:</span><span>${data?.nom_client || 'Comptant'}</span></div>
-  ${data?.telephone_client && data.telephone_client !== '-' ? `<div class="info-line"><span>Tel:</span><span>${data.telephone_client}</span></div>` : ''}
+  <div class="info-line"><span>Ref:</span><span>${e(data?.reference || '-')}</span></div>
+  <div class="info-line"><span>Date:</span><span>${e(formatDate(data?.date_vente))}</span></div>
+  <div class="info-line"><span>Client:</span><span>${e(data?.nom_client || 'Comptant')}</span></div>
+  ${data?.telephone_client && data.telephone_client !== '-' ? `<div class="info-line"><span>Tel:</span><span>${e(data.telephone_client)}</span></div>` : ''}
 
   <div class="sep-dash"></div>
 
@@ -120,6 +139,7 @@ export function generateHtmlThermique(data: any, documentType = 'FACTURE'): stri
       ${netLigne}
     </tfoot>
   </table>
+${paiementBloc}
 
   <div class="sep-solid"></div>
 

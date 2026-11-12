@@ -1,0 +1,14 @@
+# Surcharge dev : code source monté + hot reload (nest start --watch).
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  api:
+    build:
+      target: dev
+    image: neurostock-api:dev
+    restart: "no"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules          # node_modules Linux du conteneur, pas celui de l'hôte
+      - /app/dist
